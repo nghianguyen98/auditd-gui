@@ -110,8 +110,6 @@ services:
     image: ghcr.io/yourrepo/linux-tracking-collector:latest
     container_name: auditvisual-collector
     restart: unless-stopped
-    privileged: true
-    pid: "host"
     environment:
       - API_URL={api_url}
       - NODE_API_KEY={node_api_key}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Server, Activity, RefreshCw, Plus, Edit2, Trash2, Copy, Check } from 'lucide-react'
+import { Server, Activity, RefreshCw, Plus, Edit2, Trash2, Copy, Check, Terminal, ShieldAlert } from 'lucide-react'
 import Layout from '../components/Layout'
 import { apiGet, apiPut, apiDelete, getStoredUser } from '../api/client'
 import { formatDistanceToNow, fromUnixTime } from 'date-fns'
@@ -197,86 +197,111 @@ export default function Nodes() {
       {/* Install Agent Modal */}
       {showInstallModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '700px' }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>Install Agent</h3>
-            
-            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--glass-border)', marginBottom: '1rem' }}>
-              <button 
-                className={`btn btn-ghost ${installTab === 'docker' ? 'active' : ''}`} 
-                style={{ borderRadius: '0', borderBottom: installTab === 'docker' ? '2px solid var(--accent)' : 'none', color: installTab === 'docker' ? 'var(--accent)' : 'var(--text-secondary)' }}
-                onClick={() => setInstallTab('docker')}
-              >
-                Docker Compose (Recommended)
-              </button>
-              <button 
-                className={`btn btn-ghost ${installTab === 'native' ? 'active' : ''}`} 
-                style={{ borderRadius: '0', borderBottom: installTab === 'native' ? '2px solid var(--accent)' : 'none', color: installTab === 'native' ? 'var(--accent)' : 'var(--text-secondary)' }}
-                onClick={() => setInstallTab('native')}
-              >
-                Native Linux (Systemd)
-              </button>
-            </div>
-
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
-              Central API URL:
-            </p>
-            <input 
-              type="text" 
-              className="input input-full" 
-              value={apiUrl}
-              onChange={e => setApiUrl(e.target.value)}
-              style={{ marginBottom: '1.5rem', maxWidth: '300px' }}
-              placeholder="e.g. http://192.168.1.100:7432"
-            />
-
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              To install and start the agent on a new server, simply run this command as root or with sudo:
-            </p>
-
-            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-              <pre style={{ 
-                background: 'rgba(0,0,0,0.4)', 
-                padding: '1rem', 
-                borderRadius: '8px', 
-                overflowX: 'auto',
-                fontSize: '0.9rem',
-                border: '1px solid var(--glass-border)'
-              }}>
-                <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8' }}>
-                  curl -sL "{apiUrl}/api/nodes/install/script?mode={installTab}&api_url={encodeURIComponent(apiUrl)}" | sudo bash
-                </code>
-              </pre>
-              <button 
-                onClick={handleCopy}
-                className="btn btn-sm btn-ghost" 
-                style={{ position: 'absolute', top: '8px', right: '8px' }}
-              >
-                {copied ? <Check size={14} color="var(--success)" /> : <Copy size={14} />} 
-                {copied ? ' Copied!' : ' Copy'}
-              </button>
-            </div>
-            
-            <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              <h4 style={{ color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Activity size={14} className="text-accent" /> What this script does
-              </h4>
-              <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <li>Downloads the latest agent collector zip from this server.</li>
-                {installTab === 'docker' ? (
-                  <li>Builds and starts the <code>auditvisual-collector</code> docker container.</li>
-                ) : (
-                  <li>Extracts the collector and installs it as a native <code>auditvisual-collector</code> systemd service.</li>
-                )}
-                <li>Automatically points the agent to communicate with <strong>{apiUrl}</strong>.</li>
-              </ul>
-              
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)' }}>
-                <strong><Server size={12} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> Network Requirements:</strong> Ensure this central server is reachable from the agent. If you have a firewall enabled, ensure port <code>7432</code> is open and accessible.
+          <div className="modal-content" style={{ maxWidth: '650px', padding: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+              <div className="stat-icon" style={{ width: '48px', height: '48px', background: 'var(--accent-glow)', border: '1px solid rgba(59,130,246,0.3)', flexShrink: 0 }}>
+                <Terminal size={24} color="var(--accent)" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontFamily: "'Outfit', sans-serif", fontSize: '24px', letterSpacing: '-0.5px' }}>Deploy Agent</h2>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>Connect a new Linux server to your central dashboard.</div>
               </div>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button className="btn btn-primary" onClick={() => setShowInstallModal(false)}>Close</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              {/* Step 1 */}
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+                  <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '11px' }}>Step 1</span> 
+                  Choose Installation Mode
+                </div>
+                <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-elevated)', padding: '6px', borderRadius: 'var(--radius)', border: '1px solid var(--glass-border)' }}>
+                  <button 
+                    className={`btn ${installTab === 'docker' ? 'btn-primary' : 'btn-ghost'}`} 
+                    style={{ flex: 1, borderRadius: '8px', border: installTab === 'docker' ? 'none' : '' }}
+                    onClick={() => setInstallTab('docker')}
+                  >
+                    Docker (Recommended)
+                  </button>
+                  <button 
+                    className={`btn ${installTab === 'native' ? 'btn-primary' : 'btn-ghost'}`} 
+                    style={{ flex: 1, borderRadius: '8px', border: installTab === 'native' ? 'none' : '' }}
+                    onClick={() => setInstallTab('native')}
+                  >
+                    Native (Systemd)
+                  </button>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+                  <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '11px' }}>Step 2</span> 
+                  Verify Central API Address
+                </div>
+                <input 
+                  type="text" 
+                  className="input input-full" 
+                  value={apiUrl}
+                  onChange={e => setApiUrl(e.target.value)}
+                  style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', padding: '12px 16px' }}
+                />
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  The agent will send logs to this address. Ensure port <strong>7432</strong> is accessible from the target server.
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+                  <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '11px' }}>Step 3</span> 
+                  Run Command on Target Server
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ 
+                    background: '#0f172a', /* Always dark for code */
+                    padding: '16px 20px', 
+                    borderRadius: 'var(--radius)', 
+                    overflowX: 'auto',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: 'inset 0 4px 15px rgba(0,0,0,0.5)'
+                  }}>
+                    <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                      curl -sL "{apiUrl}/api/nodes/install/script?mode={installTab}&api_url={encodeURIComponent(apiUrl)}" | sudo bash
+                    </code>
+                  </div>
+                  <button 
+                    onClick={handleCopy}
+                    className="btn btn-primary" 
+                    style={{ position: 'absolute', top: '10px', right: '10px', padding: '6px 12px', fontSize: '13px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />} 
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div style={{ 
+                background: 'var(--accent-glow)', 
+                padding: '20px', 
+                borderRadius: 'var(--radius-lg)', 
+                border: '1px solid rgba(59,130,246,0.3)', 
+                display: 'flex', 
+                gap: '16px',
+                alignItems: 'flex-start'
+              }}>
+                <ShieldAlert size={24} color="var(--accent)" style={{ flexShrink: 0 }} />
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
+                  <strong style={{ display: 'block', marginBottom: '6px', fontSize: '15px' }}>Secure Deployment</strong>
+                  This command securely downloads the collector agent straight from your Central Server. It will automatically generate a secure <code>NODE_API_KEY</code> and establish a private connection. No data ever leaves your infrastructure.
+                </div>
+              </div>
+
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>
+              <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={() => setShowInstallModal(false)}>Close</button>
             </div>
           </div>
         </div>

@@ -294,7 +294,20 @@ export default function Nodes() {
                 <ShieldAlert size={24} color="var(--accent)" style={{ flexShrink: 0 }} />
                 <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
                   <strong style={{ display: 'block', marginBottom: '6px', fontSize: '15px' }}>Secure Deployment</strong>
-                  This command securely downloads the collector agent straight from your Central Server. It will automatically generate a secure <code>NODE_API_KEY</code> and establish a private connection. No data ever leaves your infrastructure.
+                  <p style={{ marginBottom: '12px', color: 'var(--text-secondary)' }}>
+                    This command securely downloads the collector agent straight from your Central Server. It will automatically generate a secure <code>NODE_API_KEY</code> and establish a private connection. No data ever leaves your infrastructure.
+                  </p>
+                  
+                  <strong style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>What this script executes:</strong>
+                  <ul style={{ paddingLeft: '20px', margin: 0, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li>Downloads the latest agent collector zip from this server.</li>
+                    {installTab === 'docker' ? (
+                      <li>Builds and starts the <code>auditvisual-collector</code> docker container.</li>
+                    ) : (
+                      <li>Extracts the collector and installs it as a native <code>auditvisual-collector</code> systemd service.</li>
+                    )}
+                    <li>Automatically configures the agent to communicate with <strong>{apiUrl}</strong>.</li>
+                  </ul>
                 </div>
               </div>
 

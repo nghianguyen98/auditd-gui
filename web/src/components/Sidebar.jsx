@@ -42,7 +42,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <div className="logo-icon">🛡️</div>
+        <img src="/logo.png" alt="Auditd GUI Logo" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain', background: '#000', padding: 4 }} className="logo-icon-img" />
         <div>
           <div className="logo-text">Auditd GUI</div>
           <div className="logo-version">v1.0 · Monitor</div>

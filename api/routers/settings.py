@@ -29,8 +29,12 @@ def update_settings(body: dict, admin=Depends(require_admin)):
         "alert_sensitive_file",
         "brute_force_count",
         "brute_force_window_min",
+        "brute_force_window_min",
         "mass_delete_count",
         "mass_delete_window_sec",
+        "slack_webhook_url",
+        "telegram_bot_token",
+        "telegram_chat_id",
     }
     conn = get_connection()
     try:
@@ -48,3 +52,28 @@ def update_settings(body: dict, admin=Depends(require_admin)):
         return {r["key"]: r["value"] for r in rows}
     finally:
         conn.close()
+
+from pydantic import BaseModel
+from alerts.rules import send_slack, send_telegram
+
+class TestNotification(BaseModel):
+    channel: str
+    slack_webhook_url: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+@router.post("/test-notification")
+def test_notification(body: TestNotification, admin=Depends(require_admin)):
+    """Test a notification channel with the provided settings."""
+    if body.channel == "slack":
+        if not body.slack_webhook_url:
+            return {"status": "error", "message": "Webhook URL is required"}
+        send_slack(body.slack_webhook_url, "✅ AuditVisual: This is a test notification from Slack!")
+        return {"status": "success", "message": "Test message sent to Slack"}
+    elif body.channel == "telegram":
+        if not body.telegram_bot_token or not body.telegram_chat_id:
+            return {"status": "error", "message": "Bot token and Chat ID are required"}
+        send_telegram(body.telegram_bot_token, body.telegram_chat_id, "✅ AuditVisual: This is a test notification from Telegram!")
+        return {"status": "success", "message": "Test message sent to Telegram"}
+    else:
+        return {"status": "error", "message": "Unknown channel"}

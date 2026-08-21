@@ -79,12 +79,38 @@ def delete_node(node_id: int, user=Depends(get_current_user)):
 
 import shutil
 import io
+import secrets
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
+@router.post("/generate-token")
+def generate_node_token(user=Depends(get_current_user)):
+    """Generate a unique token for a new agent and create a pending node."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin required")
+    
+    token = secrets.token_hex(32)
+    temp_hostname = f"pending-{token[:8]}"
+    
+    conn = get_connection()
+    try:
+        now = time.time()
+        conn.execute(
+            "INSERT INTO nodes (hostname, token, status, last_seen) VALUES (?, ?, 'offline', ?)",
+            (temp_hostname, token, now)
+        )
+        conn.commit()
+        return {"status": "success", "token": token}
+    finally:
+        conn.close()
+
 @router.get("/install/script", response_class=PlainTextResponse)
-def get_install_script(mode: str = "docker", api_url: str = "http://localhost:7432"):
+def get_install_script(mode: str = "docker", api_url: str = "http://localhost:7432", token: str = None):
     """Get the one-liner bash script for installing the agent."""
-    node_api_key = os.getenv("NODE_API_KEY", "default-secret-key")
+    if not token:
+        # Fallback for old UI requests without token
+        token = os.getenv("NODE_API_KEY", "default-secret-key")
+    
+    node_api_key = token
     
     if mode == "docker":
         script = f"""#!/bin/bash
@@ -94,9 +120,31 @@ echo "================================================="
 echo " Auditd GUI Agent Installer (Docker)"
 echo "================================================="
 
+if ! command -v docker >/dev/null 2>&1; then
+    echo "[!] Error: Docker is not installed on this system."
+    echo "    Please install docker and docker-compose first."
+    exit 1
+fi
+
 echo "[1/4] Installing prerequisites (auditd)..."
-sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins >/dev/null 2>&1
-sudo systemctl enable --now auditd
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins >/dev/null 2>&1
+elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y audit >/dev/null 2>&1
+elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y audit >/dev/null 2>&1
+elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Sy --noconfirm audit >/dev/null 2>&1
+elif command -v zypper >/dev/null 2>&1; then
+    sudo zypper install -y audit >/dev/null 2>&1
+elif command -v apk >/dev/null 2>&1; then
+    sudo apk add audit >/dev/null 2>&1
+else
+    echo "[!] Unsupported package manager. Please install 'auditd' manually."
+    exit 1
+fi
+
+sudo systemctl enable --now auditd || true
 
 echo "[2/4] Setting up directory..."
 mkdir -p /opt/auditvisual-agent
@@ -120,7 +168,11 @@ services:
 EOF
 
 echo "[4/4] Starting Agent..."
-docker-compose up -d
+if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose up -d
+else
+    docker compose up -d
+fi
 
 echo "================================================="
 echo " Agent installed successfully!"
@@ -137,8 +189,24 @@ echo " Auditd GUI Agent Installer (Native/Systemd)"
 echo "================================================="
 
 echo "[1/6] Installing prerequisites..."
-sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins python3-pip python3-venv unzip curl >/dev/null 2>&1
-sudo systemctl enable --now auditd
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins python3-pip python3-venv unzip curl >/dev/null 2>&1
+elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y audit python3-pip unzip curl >/dev/null 2>&1
+elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y audit python3-pip unzip curl >/dev/null 2>&1
+elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -Sy --noconfirm audit python-pip unzip curl >/dev/null 2>&1
+elif command -v zypper >/dev/null 2>&1; then
+    sudo zypper install -y audit python3-pip unzip curl >/dev/null 2>&1
+elif command -v apk >/dev/null 2>&1; then
+    sudo apk add audit py3-pip unzip curl >/dev/null 2>&1
+else
+    echo "[!] Unsupported package manager. Please install dependencies manually."
+    exit 1
+fi
+
+sudo systemctl enable --now auditd || true
 
 echo "[2/6] Downloading Agent Source..."
 mkdir -p /opt/auditvisual-agent
@@ -149,9 +217,11 @@ rm collector.zip
 
 echo "[3/6] Setting up Python Environment..."
 cd collector
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt >/dev/null 2>&1
+python3 -m venv venv || python3 -m virtualenv venv || echo "Assuming system python can handle it..."
+if [ -f venv/bin/activate ]; then
+    source venv/bin/activate
+fi
+pip install -r requirements.txt >/dev/null 2>&1 || pip3 install --break-system-packages -r requirements.txt >/dev/null 2>&1
 
 echo "[4/6] Configuring Environment Variables..."
 cat << 'EOF' > .env
@@ -169,8 +239,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/auditvisual-agent/collector
-Environment="PATH=/opt/auditvisual-agent/collector/venv/bin"
-ExecStart=/opt/auditvisual-agent/collector/venv/bin/python3 main.py
+ExecStart=/bin/bash -c "if [ -f venv/bin/activate ]; then source venv/bin/activate; fi && python3 main.py"
 Restart=always
 RestartSec=3
 
@@ -180,7 +249,7 @@ EOF'
 
 echo "[6/6] Starting Service..."
 sudo systemctl daemon-reload
-sudo systemctl enable --now auditvisual-collector.service
+sudo systemctl enable --now auditvisual-collector.service || true
 
 echo "================================================="
 echo " Agent installed successfully!"

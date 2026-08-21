@@ -11,12 +11,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ingest", tags=["Ingest"])
 
-NODE_API_KEY = os.getenv("NODE_API_KEY", "default-secret-key")
-
-def verify_api_key(x_node_key: str = Header(...)):
-    if x_node_key != NODE_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid Node API Key")
-    return x_node_key
+def verify_node_token(x_node_key: str = Header(...)):
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT id, hostname FROM nodes WHERE token = ?", (x_node_key,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="Invalid Node API Key")
+        return {"id": row["id"], "hostname": row["hostname"]}
+    finally:
+        conn.close()
 
 class NodePing(BaseModel):
     hostname: str
@@ -71,23 +74,29 @@ class BatchPayload(BaseModel):
     alerts: List[AlertItem] = []
 
 
-def get_or_create_node(conn, hostname: str, ip_address: str = None) -> int:
-    row = conn.execute("SELECT id FROM nodes WHERE hostname = ?", (hostname,)).fetchone()
+def update_node_presence(conn, node_id: int, db_hostname: str, payload_hostname: str, payload_ip: str = None):
+    """Update node's hostname if it was pending, and update last_seen"""
     now = time.time()
-    if row:
-        conn.execute("UPDATE nodes SET last_seen = ?, status = 'online', ip_address = COALESCE(?, ip_address) WHERE id = ?", (now, ip_address, row['id']))
-        return row['id']
+    # If the payload hostname is different and the current is a pending placeholder, update it.
+    # Otherwise just update last_seen and ip_address.
+    if db_hostname.startswith("pending-") and payload_hostname:
+        conn.execute(
+            "UPDATE nodes SET hostname = ?, ip_address = COALESCE(?, ip_address), last_seen = ?, status = 'online' WHERE id = ?",
+            (payload_hostname, payload_ip, now, node_id)
+        )
     else:
-        cursor = conn.execute("INSERT INTO nodes (hostname, ip_address, last_seen) VALUES (?, ?, ?)", (hostname, ip_address, now))
-        return cursor.lastrowid
+        conn.execute(
+            "UPDATE nodes SET last_seen = ?, status = 'online', ip_address = COALESCE(?, ip_address) WHERE id = ?",
+            (now, payload_ip, node_id)
+        )
 
 @router.post("/ping")
-def ping_node(payload: NodePing, key: str = Depends(verify_api_key)):
+def ping_node(payload: NodePing, node_info: dict = Depends(verify_node_token)):
     conn = get_connection()
     try:
-        node_id = get_or_create_node(conn, payload.hostname, payload.ip_address)
+        update_node_presence(conn, node_info["id"], node_info["hostname"], payload.hostname, payload.ip_address)
         conn.commit()
-        return {"status": "ok", "node_id": node_id}
+        return {"status": "ok", "node_id": node_info["id"]}
     finally:
         conn.close()
 
@@ -99,13 +108,15 @@ _ingestor = Ingestor(lambda: get_connection())
 _alert_engine = AlertEngine(lambda: get_connection())
 
 @router.post("/logs")
-def ingest_logs(payload: BatchPayload, key: str = Depends(verify_api_key)):
+def ingest_logs(payload: BatchPayload, node_info: dict = Depends(verify_node_token)):
     conn = get_connection()
     try:
-        node_id = get_or_create_node(conn, payload.hostname)
+        update_node_presence(conn, node_info["id"], node_info["hostname"], payload.hostname)
         conn.commit()
     finally:
         conn.close()
+    
+    node_id = node_info["id"]
 
     # Process Auth events (login/logout/failed)
     # The collector will send raw auth events. We need to add an auth_events list to BatchPayload.

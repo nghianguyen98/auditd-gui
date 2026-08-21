@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Save, UserPlus, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
-import { api, getStoredUser } from '../api/client'
+import { api, getStoredUser, apiPost } from '../api/client'
 
 function Toggle({ checked, onChange }) {
   return (
@@ -33,6 +33,20 @@ export default function Settings() {
     await api.updateSettings(settings)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function testNotification(channel) {
+    try {
+      const res = await apiPost('/settings/test-notification', {
+        channel,
+        slack_webhook_url: settings.slack_webhook_url || '',
+        telegram_bot_token: settings.telegram_bot_token || '',
+        telegram_chat_id: settings.telegram_chat_id || ''
+      })
+      alert(res.message)
+    } catch (e) {
+      alert("Failed to send test: " + e.message)
+    }
   }
 
   async function addUser() {
@@ -78,6 +92,47 @@ export default function Settings() {
                 value={settings.log_retention_days || 90}
                 onChange={e => updateSetting('log_retention_days', e.target.value)} />
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>days</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="settings-section card" style={{ marginBottom: 20 }}>
+          <h3>Notifications</h3>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Slack Webhook URL</div>
+              <div className="setting-desc">URL to send alerts to a Slack channel</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" type="password" style={{ width: '250px' }}
+                value={settings.slack_webhook_url || ''}
+                onChange={e => updateSetting('slack_webhook_url', e.target.value)}
+                placeholder="https://hooks.slack.com/..." />
+              <button className="btn btn-ghost btn-sm" onClick={() => testNotification('slack')}>Test</button>
+            </div>
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Telegram Bot Token</div>
+              <div className="setting-desc">Bot token from @BotFather</div>
+            </div>
+            <input className="input" type="password" style={{ width: '250px' }}
+              value={settings.telegram_bot_token || ''}
+              onChange={e => updateSetting('telegram_bot_token', e.target.value)}
+              placeholder="123456:ABC-DEF..." />
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Telegram Chat ID</div>
+              <div className="setting-desc">Chat ID to send messages to</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="input" type="text" style={{ width: '250px' }}
+                value={settings.telegram_chat_id || ''}
+                onChange={e => updateSetting('telegram_chat_id', e.target.value)}
+                placeholder="-1001234567890" />
+              <button className="btn btn-ghost btn-sm" onClick={() => testNotification('telegram')}>Test</button>
             </div>
           </div>
         </div>

@@ -51,7 +51,10 @@ Auditd GUI operates on a Hub-and-Spoke model:
 
 ## 🚀 Quick Start (Central Server)
 
-Setting up your central dashboard takes less than a minute.
+Setting up your central dashboard takes less than a minute. The server runs completely inside Docker, meaning it is **100% cross-platform** and runs on any Linux distribution.
+
+### Prerequisites
+- `docker` and `docker-compose` (or `docker compose`) installed on the host.
 
 ### 1. Clone & Install
 Run this on the server you want to act as your **Central Dashboard**:
@@ -70,15 +73,13 @@ sudo bash install.sh
 
 ## 📡 Adding Nodes (Monitoring Other Servers)
 
-To monitor additional servers, you just need to install the lightweight collector agent on them.
+To monitor additional servers, you just need to install the lightweight collector agent on them. The agent installer is completely **cross-distro** (supports Ubuntu, Debian, CentOS, RHEL, Fedora, Arch, Alpine, etc.) and auto-detects your package manager (`apt`, `yum`, `dnf`, `pacman`, `zypper`, `apk`).
 
-1. Open your Auditd GUI Dashboard and navigate to the **Nodes** page.
-2. In the top right corner, you will find a generated 1-line installation script.
-3. SSH into your target server and run that script:
-   ```bash
-   curl -s http://<CENTRAL_IP>:7433/nodes/install-script | sudo bash
-   ```
-4. Within seconds, the new server will appear on your dashboard!
+1. Open your Auditd GUI Dashboard and navigate to the **Servers** page.
+2. Click **Install Agent** in the top right corner.
+3. The system will generate a secure, unique **Per-Node API Token** and a 1-line installation script.
+4. SSH into your target server and run that script.
+5. Within seconds, the new server will appear on your dashboard!
 
 ## 📖 How to Use
 

@@ -16,6 +16,8 @@ export default function Nodes() {
   const [installTab, setInstallTab] = useState('docker')
   const [apiUrl, setApiUrl] = useState(window.location.origin)
   const [copied, setCopied] = useState(false)
+  const [installToken, setInstallToken] = useState(null)
+  const [generatingToken, setGeneratingToken] = useState(false)
 
   const [editNode, setEditNode] = useState(null)
   const [editForm, setEditForm] = useState({ alias: '', description: '' })
@@ -40,13 +42,24 @@ export default function Nodes() {
     return () => clearInterval(interval)
   }, [])
 
-  function handleOpenInstall() {
+  async function handleOpenInstall() {
     setApiUrl(window.location.origin)
     setShowInstallModal(true)
+    setGeneratingToken(true)
+    try {
+      // apiPost requires a body, we can just pass an empty object or change apiPost to allow undefined. 
+      // Let's use apiPost('/nodes/generate-token', {})
+      const res = await apiPost('/nodes/generate-token', {})
+      setInstallToken(res.token)
+    } catch (err) {
+      alert("Failed to generate secure token: " + err.message)
+    } finally {
+      setGeneratingToken(false)
+    }
   }
 
   function handleCopy() {
-    const text = `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}" | sudo bash`
+    const text = `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -267,7 +280,7 @@ export default function Nodes() {
                     boxShadow: 'inset 0 4px 15px rgba(0,0,0,0.5)'
                   }}>
                     <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                      curl -sL "{apiUrl}/api/nodes/install/script?mode={installTab}&api_url={encodeURIComponent(apiUrl)}" | sudo bash
+                      {generatingToken ? "Generating secure token..." : `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`}
                     </code>
                   </div>
                   <button 

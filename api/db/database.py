@@ -13,6 +13,7 @@ PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS nodes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     hostname    TEXT UNIQUE NOT NULL,
+    token       TEXT UNIQUE,
     ip_address  TEXT,
     alias       TEXT,
     description TEXT,
@@ -120,7 +121,10 @@ INSERT OR IGNORE INTO settings(key, value) VALUES
     ('brute_force_count', '5'),
     ('brute_force_window_min', '5'),
     ('mass_delete_count', '10'),
-    ('mass_delete_window_sec', '60');
+    ('mass_delete_window_sec', '60'),
+    ('slack_webhook_url', ''),
+    ('telegram_bot_token', ''),
+    ('telegram_chat_id', '');
 """
 
 def get_connection() -> sqlite3.Connection:
@@ -145,8 +149,59 @@ def init_db():
         if 'description' not in columns:
             conn.execute("ALTER TABLE nodes ADD COLUMN description TEXT")
             logger.info("Migrated nodes table: Added description column")
+        
+        if 'token' not in columns:
+            conn.execute("ALTER TABLE nodes ADD COLUMN token TEXT")
+            # Set default token to existing global NODE_API_KEY for backward compatibility
+            default_token = os.getenv("NODE_API_KEY", "default-secret-key")
+            conn.execute("UPDATE nodes SET token = ?", (default_token,))
+            logger.info("Migrated nodes table: Added token column with fallback")
+            
         conn.commit()
 
         logger.info(f"Database initialized at {DB_PATH}")
     finally:
         conn.close()
+
+import threading
+import time
+
+def _retention_loop():
+    while True:
+        try:
+            conn = get_connection()
+            try:
+                row = conn.execute("SELECT value FROM settings WHERE key='log_retention_days'").fetchone()
+                days = int(row['value']) if row else 90
+                
+                if days > 0:
+                    cutoff = time.time() - (days * 86400)
+                    
+                    # Ensure foreign key constraints are on for cascading deletes
+                    conn.execute("PRAGMA foreign_keys=ON")
+                    
+                    c1 = conn.execute("DELETE FROM sessions WHERE login_time < ?", (cutoff,))
+                    c2 = conn.execute("DELETE FROM alerts WHERE timestamp < ?", (cutoff,))
+                    # Some commands and file events might not be linked to sessions if session extraction failed, 
+                    # so let's delete them by timestamp as well just in case.
+                    c3 = conn.execute("DELETE FROM commands WHERE timestamp < ?", (cutoff,))
+                    c4 = conn.execute("DELETE FROM file_events WHERE timestamp < ?", (cutoff,))
+                    
+                    conn.commit()
+                    
+                    total_deleted = c1.rowcount + c2.rowcount + c3.rowcount + c4.rowcount
+                    if total_deleted > 0:
+                        logger.info(f"Data retention job pruned {total_deleted} old records (cutoff: {days} days)")
+            except Exception as e:
+                logger.error(f"Error in data retention job: {e}")
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.error(f"Data retention connection error: {e}")
+        
+        # Run every 6 hours
+        time.sleep(6 * 3600)
+
+def start_retention_job():
+    t = threading.Thread(target=_retention_loop, daemon=True)
+    t.start()

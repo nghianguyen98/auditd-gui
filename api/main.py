@@ -17,7 +17,7 @@ from routers.alerts import router as alerts_router
 from routers.settings import router as settings_router
 from routers.ingest import router as ingest_router
 from routers.nodes import router as nodes_router
-from db.database import init_db
+from db.database import init_db, start_retention_job
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +30,7 @@ logger = logging.getLogger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    start_retention_job()
     logger.info("Auditd GUI API starting...")
     ensure_admin_user()
     yield

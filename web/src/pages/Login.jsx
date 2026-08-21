@@ -31,7 +31,7 @@ export default function Login() {
       </div>
       <div className="login-card fade-in">
         <div className="login-header">
-          <div className="login-logo">🛡️</div>
+          <img src="/logo.png" alt="Auditd GUI Logo" className="login-logo" style={{ objectFit: 'contain', background: '#000', padding: 8 }} />
           <div className="login-title">Auditd GUI</div>
           <div className="login-subtitle">Linux Activity Monitor — Sign in to continue</div>
         </div>

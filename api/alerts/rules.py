@@ -5,8 +5,28 @@ api/alerts/rules.py — Centralized Alert detection engine
 import logging
 import sqlite3
 import time
+import threading
+import urllib.request
+import json
 
 logger = logging.getLogger(__name__)
+
+def send_slack(webhook_url, message):
+    try:
+        data = json.dumps({"text": message}).encode('utf-8')
+        req = urllib.request.Request(webhook_url, data=data, headers={'Content-Type': 'application/json'})
+        urllib.request.urlopen(req, timeout=5)
+    except Exception as e:
+        logger.error(f"Slack webhook failed: {e}")
+
+def send_telegram(bot_token, chat_id, message):
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = json.dumps({"chat_id": chat_id, "text": message}).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        urllib.request.urlopen(req, timeout=5)
+    except Exception as e:
+        logger.error(f"Telegram webhook failed: {e}")
 
 
 class AlertEngine:
@@ -61,6 +81,21 @@ class AlertEngine:
             )
             conn.commit()
             logger.warning(f"🚨 ALERT [{severity}] {alert_type}: {desc}")
+            
+            # Dispatch notifications
+            slack_url = self._get_setting("slack_webhook_url", "")
+            tg_token = self._get_setting("telegram_bot_token", "")
+            tg_chat_id = self._get_setting("telegram_chat_id", "")
+            
+            if slack_url or (tg_token and tg_chat_id):
+                msg = f"🚨 *ALERT [{severity}]* - {alert_type}\n{desc}"
+                if username: msg += f"\nUser: {username}"
+                
+                if slack_url:
+                    threading.Thread(target=send_slack, args=(slack_url, msg), daemon=True).start()
+                if tg_token and tg_chat_id:
+                    threading.Thread(target=send_telegram, args=(tg_token, tg_chat_id, msg), daemon=True).start()
+                    
         except Exception as e:
             logger.error(f"Failed to save alert: {e}")
         finally:

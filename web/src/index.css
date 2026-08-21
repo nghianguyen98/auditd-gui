@@ -56,14 +56,14 @@
 [data-theme="light"] {
   /* Core Colors */
   --bg-deep:        #f1f5f9;
-  --bg-surface:     rgba(255, 255, 255, 0.8);
-  --bg-surface-hover: rgba(255, 255, 255, 0.95);
-  --bg-elevated:    rgba(255, 255, 255, 0.9);
+  --bg-surface:     rgba(255, 255, 255, 0.95);
+  --bg-surface-hover: #ffffff;
+  --bg-elevated:    #ffffff;
 
   /* Glass Effects */
-  --glass-border:   rgba(0, 0, 0, 0.08);
-  --glass-border-hover: rgba(0, 0, 0, 0.15);
-  --glass-border-active: rgba(0, 0, 0, 0.25);
+  --glass-border:   rgba(0, 0, 0, 0.12);
+  --glass-border-hover: rgba(0, 0, 0, 0.2);
+  --glass-border-active: rgba(0, 0, 0, 0.3);
   
   /* Text Colors */
   --text-primary:   #0f172a;
@@ -271,9 +271,18 @@ a:hover { color: var(--accent-hover); text-shadow: var(--shadow-neon); }
   border-left: 3px solid var(--accent);
   border-radius: 4px var(--radius) var(--radius) 4px;
 }
+[data-theme="light"] .nav-item.active {
+  color: #0f172a;
+  background: linear-gradient(90deg, rgba(59,130,246,0.15), transparent);
+  font-weight: 700;
+}
+
 .nav-item.active .nav-icon {
   color: var(--accent);
   filter: drop-shadow(0 0 8px rgba(59,130,246,0.6));
+}
+[data-theme="light"] .nav-item.active .nav-icon {
+  filter: drop-shadow(0 2px 4px rgba(59,130,246,0.3));
 }
 
 .nav-item .nav-icon { width: 18px; height: 18px; flex-shrink: 0; transition: 0.3s; }

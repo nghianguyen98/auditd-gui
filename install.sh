@@ -147,9 +147,12 @@ if [ ! -f "$ENV_FILE" ]; then
   log_info "Creating .env file from template..."
   cp "$SCRIPT_DIR/.env.example" "$ENV_FILE"
 
-  # Generate random JWT secret
+  # Generate random JWT secret and Node API Key
   JWT_SECRET=$(openssl rand -hex 32 2>/dev/null || cat /proc/sys/kernel/random/uuid | tr -d '-')
+  NODE_API_KEY=$(openssl rand -hex 16 2>/dev/null || cat /proc/sys/kernel/random/uuid | tr -d '-')
+  
   sed -i "s|change-this-to-a-random-secret-at-least-64-characters-long|$JWT_SECRET|g" "$ENV_FILE"
+  sed -i "s|change-this-to-a-random-secret-for-nodes|$NODE_API_KEY|g" "$ENV_FILE"
 
   # Update auth log path
   sed -i "s|HOST_AUTH_LOG=.*|HOST_AUTH_LOG=$AUTH_LOG|g" "$ENV_FILE"

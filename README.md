@@ -65,6 +65,16 @@ curl -s http://<CENTRAL_IP>:7433/nodes/install-script | sudo bash
 ```
 *This script will deploy the `auditvisual-collector` container pointing back to your central server.*
 
+## Security Best Practices
+
+> **[WARNING]**  
+> Auditd GUI processes sensitive system data. You MUST follow these practices for a production environment:
+
+1. **Change Default Passwords**: Update `ADMIN_PASSWORD` in `.env` immediately.
+2. **Secure Node Communication**: Ensure `NODE_API_KEY` in `.env` is a strong, random string (the `install.sh` script generates one automatically).
+3. **Use HTTPS**: Never expose the Web UI or API directly to the internet without a reverse proxy (like Nginx, Caddy, or Traefik) providing SSL/TLS encryption.
+4. **Firewall Rules**: Block public access to port `7432` and `7433`. Only allow trusted IP addresses.
+
 ## Configuration (`.env`)
 
 You can toggle alerts and adjust thresholds directly in the `.env` file located at the root of this project:

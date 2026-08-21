@@ -1,0 +1,64 @@
+services:
+  collector:
+    build: ./collector
+    container_name: auditvisual-collector
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - API_URL=http://api:8000
+    volumes:
+      - ${HOST_AUDIT_LOG:-/var/log/audit/audit.log}:/host-logs/audit.log:ro
+      - ${HOST_AUTH_LOG:-/var/log/auth.log}:/host-logs/auth.log:ro
+      - /etc/passwd:/host-etc/passwd:ro
+      # The collector no longer needs the DB volume
+    depends_on:
+      - api
+    networks:
+      - auditvisual-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build: ./api
+    container_name: auditvisual-api
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - auditvisual-data:/data
+      - ./collector:/app/collector_src:ro
+    networks:
+      - auditvisual-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build: ./web
+    container_name: auditvisual-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-7432}:80"
+    env_file: .env
+    depends_on:
+      - api
+    networks:
+      - auditvisual-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  auditvisual-data:
+    name: auditvisual-data
+
+networks:
+  auditvisual-net:
+    name: auditvisual-net
+    driver: bridge

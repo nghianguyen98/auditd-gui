@@ -1,24 +1,41 @@
-# Auditd GUI 🛡️
+<div align="center">
+  <img src="web/public/favicon.svg" alt="Auditd GUI Logo" width="120" />
+  <h1>🛡️ Auditd GUI</h1>
+  <p><strong>The modern, centralized Linux User Activity & Security Monitor.</strong></p>
+  <p>
+    <a href="#why-auditd-gui">Why?</a> • 
+    <a href="#features">Features</a> • 
+    <a href="#quick-start">Quick Start</a> • 
+    <a href="#how-to-use">How to Use</a> • 
+    <a href="#security-best-practices">Security</a>
+  </p>
+</div>
 
-Auditd GUI is a comprehensive, centralized Linux Activity Monitor built with a modern web interface. It parses system `auditd` and `auth.log` data to provide realtime insights into SSH sessions, executed commands, and security alerts across multiple servers.
+---
 
-![Auditd GUI Logo](web/public/favicon.svg)
+## 🎯 Why Auditd GUI?
 
-## Features
+Managing Linux server security can be a nightmare. Parsing raw `/var/log/audit/audit.log` or `auth.log` files manually is tedious, and traditional SIEMs are often too bloated or expensive. 
 
-- **Multi-Node Monitoring**: Connect and monitor multiple Linux servers from a single pane of glass.
-- **Activity & Session Tracking**: Trace every user session, including exact commands executed, even after `sudo -i` escalations.
-- **Automated Security Alerts**: Out-of-the-box detection for:
-  - SSH Brute Force attempts
-  - Sudo Privilege Escalations
-  - Mass File Deletions
-  - Suspicious Commands
-  - Sensitive File Access
-- **Modern Glassmorphism UI**: Beautiful React-based interface with automatic Dark/Light mode switching.
-- **Lightweight Collector**: Agent written in pure Python, reading `auditd` logs efficiently without heavy JVM dependencies.
-- **Dockerized**: Easy deployment via `docker-compose`.
+**Auditd GUI** bridges the gap. It provides a **beautiful, lightweight, and centralized web dashboard** that instantly translates cryptic Linux audit logs into human-readable session histories, exact command trails, and real-time security alerts. Whether you manage one server or fifty, Auditd GUI gives you crystal-clear visibility into exactly *who* did *what*, *when*, and *where*.
 
-## Architecture
+## ✨ Features
+
+- 🌐 **Centralized Multi-Node Dashboard**: Monitor all your Linux servers from a single, elegant pane of glass.
+- 🕵️ **Deep Session Tracking**: Trace a user's entire lifecycle on your server. Know exactly which commands they executed, even if they escalated privileges using `sudo -i` or `su`.
+- 🚨 **Automated Threat Detection**: Get out-of-the-box, real-time alerts for:
+  - 🔓 SSH Brute Force attacks
+  - ⬆️ Sudo Privilege Escalations
+  - 🗑️ Mass File Deletions
+  - ⚠️ Suspicious Command executions (e.g., `wget`, `curl`, `nc`)
+  - 📂 Sensitive File Access (e.g., `/etc/shadow`, `/etc/passwd`)
+- 🎨 **Premium UI/UX**: A stunning, responsive React interface featuring Glassmorphism design, smooth animations, and an automatic Dark/Light mode toggle.
+- 🪶 **Ultra-Lightweight Agent**: The collector agent is written in pure Python—no heavy JVMs, no bloated resource consumption. It reads logs efficiently and securely.
+- 🐳 **Docker-Native Deployment**: Spin up the entire stack in seconds using `docker-compose`.
+
+## 🏗️ Architecture
+
+Auditd GUI operates on a Hub-and-Spoke model:
 
 ```text
 [ Linux Server (Node 1) ] 
@@ -26,87 +43,97 @@ Auditd GUI is a comprehensive, centralized Linux Activity Monitor built with a m
   - /var/log/audit/audit.log 
   - /var/log/auth.log
         |
-    [ Python Collector Agent ]  -- REST API -->  [ Central Auditd GUI Server ]
-                                                      - FastAPI (Backend)
-                                                      - SQLite (Database)
-                                                      - React/Vite (Frontend)
+    [ Python Collector Agent ]  ==== REST API ====>  [ Central Auditd GUI Server ]
+                                                      - FastAPI (High-performance Backend)
+                                                      - SQLite (Zero-config Database)
+                                                      - React/Vite (Modern Frontend)
 ```
 
-## Quick Start (Docker)
+## 🚀 Quick Start (Central Server)
 
-1. Clone this repository:
+Setting up your central dashboard takes less than a minute.
+
+### 1. Clone & Install
+Run this on the server you want to act as your **Central Dashboard**:
 ```bash
 git clone https://github.com/nghianguyen98/auditd-gui.git
 cd auditd-gui
-```
-
-2. Run the automated installer script:
-```bash
 sudo bash install.sh
 ```
+> 💡 **What does `install.sh` do?** It automatically configures `auditd` rules, sets up secure `.env` credentials, generates cryptographic keys, and launches the Docker containers.
 
-> **Note:** The `install.sh` script automatically installs `auditd`, configures production-safe log rotation, sets up your `.env` variables, and starts the Docker containers.
+### 2. Login
+1. Open your browser and navigate to `http://<your-server-ip>:7432`
+2. Login with the default credentials:
+   - **Username**: `admin`
+   - **Password**: `ChangeMe@2024!` *(Ensure you update this immediately!)*
 
-3. Access the Web UI:
-Open `http://<your-server-ip>:7432` in your browser. 
-Login with the default credentials: `admin` / `ChangeMe@2024!` 
-*(Ensure you update this password in your `.env` file immediately!)*
+## 📡 Adding Nodes (Monitoring Other Servers)
 
-## Manual Installation (Adding Nodes)
+To monitor additional servers, you just need to install the lightweight collector agent on them.
 
-To add another server (node) to your central Auditd GUI dashboard, run the agent on the target server.
+1. Open your Auditd GUI Dashboard and navigate to the **Nodes** page.
+2. In the top right corner, you will find a generated 1-line installation script.
+3. SSH into your target server and run that script:
+   ```bash
+   curl -s http://<CENTRAL_IP>:7433/nodes/install-script | sudo bash
+   ```
+4. Within seconds, the new server will appear on your dashboard!
 
-### 1. Generate an Installer Command
-On the Auditd GUI dashboard, go to the **Servers** page. At the top right, you will see a script to curl the installer directly from your API server.
+## 📖 How to Use
 
-### 2. Run on Target Node
-```bash
-curl -s http://<CENTRAL_IP>:7433/nodes/install-script | sudo bash
-```
-*This script will deploy the `auditvisual-collector` container pointing back to your central server.*
+### 🖥️ Dashboard
+The main dashboard gives you a bird's-eye view of your infrastructure. Monitor active SSH sessions, view daily command counts, and spot recent security alerts at a glance.
 
-## Security Best Practices
+### 👤 Sessions
+Navigate to the **Sessions** tab to see exactly who logged in and when. Click on any session to drill down into a timeline of **every single command** executed during that specific session.
+
+### ⚠️ Alerts
+The **Alerts** tab categorizes security events by severity. You can customize the thresholds (e.g., how many failed logins trigger a Brute Force alert) directly in the **Settings** UI or via the `.env` file.
+
+## 🔒 Security Best Practices
 
 > **[WARNING]**  
-> Auditd GUI processes sensitive system data. You MUST follow these practices for a production environment:
+> Auditd GUI processes highly sensitive system data. If you are deploying this in a production environment, you **MUST** follow these practices:
 
-1. **Change Default Passwords**: Update `ADMIN_PASSWORD` in `.env` immediately.
-2. **Secure Node Communication**: Ensure `NODE_API_KEY` in `.env` is a strong, random string (the `install.sh` script generates one automatically).
-3. **Use HTTPS**: Never expose the Web UI or API directly to the internet without a reverse proxy (like Nginx, Caddy, or Traefik) providing SSL/TLS encryption.
-4. **Firewall Rules**: Block public access to port `7432` and `7433`. Only allow trusted IP addresses.
+1. **Change Default Credentials**: Update the `ADMIN_PASSWORD` in your `.env` file immediately after installation.
+2. **Secure Node Communication**: The `install.sh` script automatically generates a secure `NODE_API_KEY`. Never share this key publicly.
+3. **Use HTTPS (Reverse Proxy)**: Never expose ports `7432` (Web) or `7433` (API) directly to the public internet. Place Auditd GUI behind a reverse proxy like **Nginx, Caddy, or Traefik** with an SSL/TLS certificate (e.g., Let's Encrypt).
+4. **Firewall Rules**: Restrict port access. Only allow your collector nodes' IP addresses to communicate with the API port.
 
-## Configuration (`.env`)
+## ⚙️ Configuration (`.env`)
 
-You can toggle alerts and adjust thresholds directly in the `.env` file located at the root of this project:
+You can fine-tune data retention and alert sensitivities in the `.env` file:
 
 ```env
-# Alert thresholds
+# How many days to keep logs (0 = keep forever)
+LOG_RETENTION_DAYS=90
+
+# Brute force threshold: 5 failed attempts within 5 minutes
 BRUTE_FORCE_COUNT=5
 BRUTE_FORCE_WINDOW_MIN=5
 
+# Mass delete threshold: 10 files deleted within 60 seconds
 MASS_DELETE_COUNT=10
 MASS_DELETE_WINDOW_SEC=60
 ```
-After modifying `.env`, restart the backend:
-```bash
-docker compose restart api
-```
+*(Remember to run `docker compose restart api` after modifying `.env`)*
 
-## Development
+## 🛠️ Local Development
 
-If you'd like to develop or test locally without a real `auditd` setup (e.g., on macOS or Windows):
+Want to test the UI locally without a real `auditd` setup (e.g., on macOS or Windows)?
 
 1. Start the stack with the `dev` override:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
-2. The `dev` override mounts mock log files from `./dev-mock/` instead of system paths.
+2. The `dev` override mounts mock log files from `./dev-mock/` instead of your real system paths.
 3. Access the frontend at `http://localhost:7432`.
 
-## Contributing
+## 🤝 Contributing
 
-Pull requests are welcome! Please ensure that your code adheres to the existing formatting and structure.
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report bugs, and suggest features. Be sure to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).

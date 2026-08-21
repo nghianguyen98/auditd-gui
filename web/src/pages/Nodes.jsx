@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Server, Activity, RefreshCw, Plus, Edit2, Trash2, Copy, Check, Terminal, ShieldAlert } from 'lucide-react'
 import Layout from '../components/Layout'
-import { apiGet, apiPut, apiDelete, getStoredUser } from '../api/client'
+import { apiGet, apiPut, apiDelete, apiPost, getStoredUser } from '../api/client'
 import { formatDistanceToNow, fromUnixTime } from 'date-fns'
 
 export default function Nodes() {

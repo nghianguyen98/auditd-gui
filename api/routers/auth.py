@@ -7,7 +7,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -26,6 +26,12 @@ EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "8"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# In-memory rate limiter for brute-force protection
+# Format: { "ip_address": [(timestamp1, attempt_count), ...] }
+_failed_logins = {}
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_WINDOW_SEC = 300  # 5 minutes
 
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -109,7 +115,20 @@ def ensure_admin_user():
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 @router.post("/login", response_model=Token)
-def login(form: OAuth2PasswordRequestForm = Depends()):
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends()):
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # Check rate limit
+    if ip in _failed_logins:
+        # Filter out old attempts
+        _failed_logins[ip] = [ts for ts in _failed_logins[ip] if now - ts < LOCKOUT_WINDOW_SEC]
+        if len(_failed_logins[ip]) >= MAX_FAILED_ATTEMPTS:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many failed login attempts. Please try again later.",
+            )
+
     conn = get_connection()
     try:
         row = conn.execute(
@@ -119,10 +138,19 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
         conn.close()
 
     if not row or not verify_password(form.password, row["password_hash"]):
+        # Record failed attempt
+        if ip not in _failed_logins:
+            _failed_logins[ip] = []
+        _failed_logins[ip].append(now)
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
+        
+    # Successful login, clear failed attempts
+    if ip in _failed_logins:
+        del _failed_logins[ip]
 
     # Update last_login
     conn = get_connection()

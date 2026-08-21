@@ -4,6 +4,7 @@ api/main.py — FastAPI application entry point
 
 import logging
 import sys
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -45,9 +46,13 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# Retrieve allowed origins from env, defaulting to local dev url
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:7432")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # nginx handles external access
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

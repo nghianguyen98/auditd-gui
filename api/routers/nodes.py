@@ -327,6 +327,7 @@ echo "[5/6] Configuring Environment Variables..."
 cat << 'EOF' > .env
 API_URL={api_url}
 NODE_API_KEY={node_api_key}
+PASSWD_PATH=/etc/passwd
 EOF
 
 echo "[6/6] Creating & Starting Systemd Service..."

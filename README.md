@@ -113,34 +113,11 @@ The **Alerts** tab categorizes security events by severity. You can customize th
 3. **Use HTTPS (Reverse Proxy)**: Never expose ports `7432` (Web) or `7433` (API) directly to the public internet. Place Auditd GUI behind a reverse proxy like **Nginx, Caddy, or Traefik** with an SSL/TLS certificate (e.g., Let's Encrypt).
 4. **Firewall Rules**: Restrict port access. Only allow your collector nodes' IP addresses to communicate with the API port.
 
-## ⚙️ Configuration (`.env`)
+## ⚙️ Configuration
 
-You can fine-tune data retention and alert sensitivities in the `.env` file:
+You can fine-tune data retention and alert sensitivities directly in the **Settings** tab of the Web Dashboard. Changes take effect immediately without requiring a server restart.
 
-```env
-# How many days to keep logs (0 = keep forever)
-LOG_RETENTION_DAYS=90
-
-# Brute force threshold: 5 failed attempts within 5 minutes
-BRUTE_FORCE_COUNT=5
-BRUTE_FORCE_WINDOW_MIN=5
-
-# Mass delete threshold: 10 files deleted within 60 seconds
-MASS_DELETE_COUNT=10
-MASS_DELETE_WINDOW_SEC=60
-```
-*(Remember to run `docker compose restart api` after modifying `.env`)*
-
-## 🛠️ Local Development
-
-Want to test the UI locally without a real `auditd` setup (e.g., on macOS or Windows)?
-
-1. Start the stack with the `dev` override:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-```
-2. The `dev` override mounts mock log files from `./dev-mock/` instead of your real system paths.
-3. Access the frontend at `http://localhost:7432`.
+*Note: The `.env` file is now strictly used for core runtime parameters like ports, log paths, and cryptographic keys.*
 
 ## 🤝 Contributing
 

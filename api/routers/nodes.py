@@ -321,7 +321,7 @@ if ! python3 -m venv venv; then
 fi
 
 # Install requirements safely inside the venv
-./venv/bin/pip install -r requirements.txt >/dev/null 2>&1
+./venv/bin/pip install -r requirements.txt
 
 echo "[5/6] Configuring Environment Variables..."
 cat << 'EOF' > .env

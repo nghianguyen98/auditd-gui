@@ -49,21 +49,30 @@ Auditd GUI operates on a Hub-and-Spoke model:
                                                       - React/Vite (Modern Frontend)
 ```
 
-## 🚀 Quick Start (Central Server)
+## 🚀 Quick Start
 
-Setting up your central dashboard takes less than a minute. The server runs completely inside Docker, meaning it is **100% cross-platform** and runs on any Linux distribution.
+Setting up your central dashboard takes less than a minute. The server runs completely inside Docker, meaning it is **100% cross-platform** and runs on any Linux distribution (or macOS/Windows for development).
 
-### Prerequisites
-- `docker` and `docker-compose` (or `docker compose`) installed on the host.
+### Option 1: Deploy Central Server ONLY (Recommended)
+Use this if you just want to host the Dashboard and API, and will install agents on other servers.
 
-### 1. Clone & Install
-Run this on the server you want to act as your **Central Dashboard**:
+```bash
+git clone https://github.com/nghianguyen98/auditd-gui.git
+cd auditd-gui
+cp .env.example .env
+# Important: Edit .env to set a strong JWT_SECRET and ADMIN_PASSWORD
+docker-compose up -d api web
+```
+
+### Option 2: Deploy All-in-One (Server + Monitor the Host itself)
+Use this if you want to host the Dashboard AND monitor the host server simultaneously. The installation script will automatically install `auditd` on the host system.
+
 ```bash
 git clone https://github.com/nghianguyen98/auditd-gui.git
 cd auditd-gui
 sudo bash install.sh
 ```
-> 💡 **What does `install.sh` do?** It automatically configures `auditd` rules, sets up secure `.env` credentials, generates cryptographic keys, and launches the Docker containers.
+> 💡 **What does `install.sh` do?** It creates the `.env` with secure random keys, safely configures host `auditd` kernel rules, and launches all containers (`api`, `web`, and `collector`).
 
 ### 2. Login
 1. Open your browser and navigate to `http://<your-server-ip>:7432`
@@ -73,13 +82,15 @@ sudo bash install.sh
 
 ## 📡 Adding Nodes (Monitoring Other Servers)
 
-To monitor additional servers, you just need to install the lightweight collector agent on them. The agent installer is completely **cross-distro** (supports Ubuntu, Debian, CentOS, RHEL, Fedora, Arch, Alpine, etc.) and auto-detects your package manager (`apt`, `yum`, `dnf`, `pacman`, `zypper`, `apk`).
+To monitor additional servers, you just need to install the lightweight collector agent on them. The agent installer is completely **cross-distro** (supports Ubuntu, Debian, CentOS, RHEL, Fedora, Arch, Alpine, etc.) and guarantees **Zero-Impact** to your production workloads.
 
 1. Open your Auditd GUI Dashboard and navigate to the **Servers** page.
 2. Click **Install Agent** in the top right corner.
-3. The system will generate a secure, unique **Per-Node API Token** and a 1-line installation script.
-4. SSH into your target server and run that script.
-5. Within seconds, the new server will appear on your dashboard!
+3. Choose your preferred installation mode:
+   - **Docker**: Runs the agent in an isolated container.
+   - **Native (Standalone/ZIP)**: Creates a strictly isolated Python `venv` with hard CPU/RAM limits via Systemd. Never upgrades your system packages.
+4. Copy the secure 1-line installation command (which includes your auto-generated API Token).
+5. SSH into your target server and run the command. Within seconds, the new server will appear on your dashboard!
 
 ## 📖 How to Use
 

@@ -346,7 +346,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/auditvisual-agent/collector
 Environment=AUDIT_LOG_PATH=/var/log/audit/audit.log
-Environment=AUTH_LOG_PATH=${DETECTED_AUTH_LOG}
+Environment=AUTH_LOG_PATH=${{DETECTED_AUTH_LOG}}
 ExecStart=/opt/auditvisual-agent/collector/venv/bin/python3 main.py
 Restart=always
 RestartSec=10

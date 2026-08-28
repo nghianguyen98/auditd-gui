@@ -1,2 +1,3 @@
 watchdog==4.0.1
 schedule==1.2.2
+requests

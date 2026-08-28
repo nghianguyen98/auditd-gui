@@ -9,13 +9,7 @@ services:
       - ./dev-mock/auth.log:/host-logs/auth.log:ro
       - /etc/passwd:/host-etc/passwd:ro   # Mac has this file
       - auditvisual-data:/data
-    environment:
-      - LOG_RETENTION_DAYS=90
-      - ALERT_SUDO_ESCALATION=true
-      - ALERT_MASS_DELETE=true
-      - ALERT_SUSPICIOUS_CMD=true
-      - ALERT_BRUTE_FORCE=true
-      - ALERT_SENSITIVE_FILE=true
+
 
   api:
     volumes:
@@ -27,4 +21,3 @@ services:
       - ADMIN_PASSWORD=admin123
       - JWT_SECRET=dev-secret-key-not-for-production-use
       - JWT_EXPIRE_HOURS=8
-      - LOG_RETENTION_DAYS=90

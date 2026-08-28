@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="web/public/favicon.svg" alt="Auditd GUI Logo" width="120" />
+  <img src="web/public/logo.png" alt="Auditd GUI Logo" width="120" />
   <h1>🛡️ Auditd GUI</h1>
   <p><strong>The modern, centralized Linux User Activity & Security Monitor.</strong></p>
   <p>

@@ -130,6 +130,7 @@ INSERT OR IGNORE INTO settings(key, value) VALUES
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 def init_db():
@@ -180,10 +181,13 @@ def _retention_loop():
                     # Ensure foreign key constraints are on for cascading deletes
                     conn.execute("PRAGMA foreign_keys=ON")
                     
+                    # Unlink alerts from old sessions and commands to avoid FK constraint failures
+                    conn.execute("UPDATE alerts SET session_id = NULL WHERE session_id IN (SELECT id FROM sessions WHERE login_time < ?)", (cutoff,))
+                    conn.execute("UPDATE alerts SET command_id = NULL WHERE command_id IN (SELECT id FROM commands WHERE timestamp < ?)", (cutoff,))
+                    
                     c1 = conn.execute("DELETE FROM sessions WHERE login_time < ?", (cutoff,))
                     c2 = conn.execute("DELETE FROM alerts WHERE timestamp < ?", (cutoff,))
-                    # Some commands and file events might not be linked to sessions if session extraction failed, 
-                    # so let's delete them by timestamp as well just in case.
+                    # Commands and file_events are cascaded from sessions, but we also delete orphans
                     c3 = conn.execute("DELETE FROM commands WHERE timestamp < ?", (cutoff,))
                     c4 = conn.execute("DELETE FROM file_events WHERE timestamp < ?", (cutoff,))
                     

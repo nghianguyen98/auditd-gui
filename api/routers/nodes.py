@@ -256,7 +256,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     PKGS_APK="$PKGS_APK python3"
 fi
 
-if ! python3 -c "import venv" >/dev/null 2>&1; then
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
     PKGS_APT="$PKGS_APT python3-venv"
 fi
 
@@ -401,7 +401,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     PKGS_APK="$PKGS_APK python3"
 fi
 
-if ! python3 -c "import venv" >/dev/null 2>&1; then
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
     PKGS_APT="$PKGS_APT python3-venv"
 fi
 

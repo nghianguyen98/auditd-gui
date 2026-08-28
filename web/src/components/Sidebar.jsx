@@ -35,7 +35,6 @@ export default function Sidebar() {
     { to: '/',        icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/nodes',   icon: Server,          label: 'Servers' },
     { to: '/sessions', icon: Monitor,         label: 'Sessions' },
-    { to: '/users',   icon: Users,           label: 'Users' },
     { to: '/alerts',  icon: Bell,            label: 'Alerts', badge: alertCount },
   ]
 
@@ -67,6 +66,13 @@ export default function Sidebar() {
         {user?.is_admin && (
           <>
             <div className="nav-section-label" style={{ marginTop: 8 }}>Admin</div>
+            <NavLink
+              to="/users"
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              <Users className="nav-icon" size={16} />
+              Users
+            </NavLink>
             <NavLink
               to="/settings"
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}

@@ -4,7 +4,7 @@ import { Monitor, Wifi, Terminal, Clock } from 'lucide-react'
 import Layout from '../components/Layout'
 import { api } from '../api/client'
 import { useNodeContext } from '../NodeContext'
-import { format, fromUnixTime, formatDuration, intervalToDuration } from 'date-fns'
+import { format, fromUnixTime, getUnixTime, parseISO, formatDuration, intervalToDuration } from 'date-fns'
 
 function fmtTime(ts) {
   if (!ts) return '—'
@@ -27,20 +27,38 @@ export default function Sessions() {
   const [loading, setLoading]   = useState(true)
   const [username, setUsername] = useState('')
   const [page, setPage]         = useState(0)
-  const PER_PAGE = 25
+  const [limit, setLimit]       = useState(50)
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate]     = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     setLoading(true)
-    api.sessions({ node_id: selectedNodeId || undefined, username: username || undefined, limit: PER_PAGE, offset: page * PER_PAGE })
+    let from_ts = undefined
+    let to_ts = undefined
+    
+    if (fromDate) from_ts = getUnixTime(parseISO(fromDate))
+    if (toDate) {
+      // Add 24 hours minus 1 second to the 'to' date to include the whole day
+      to_ts = getUnixTime(parseISO(toDate)) + 86399 
+    }
+
+    api.sessions({ 
+      node_id: selectedNodeId || undefined, 
+      username: username || undefined, 
+      from: from_ts,
+      to: to_ts,
+      limit: limit, 
+      offset: page * limit 
+    })
       .then(d => { setSessions(d.sessions); setTotal(d.total) })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [username, page, selectedNodeId])
+  }, [username, page, limit, fromDate, toDate, selectedNodeId])
 
   return (
     <Layout title="Sessions" subtitle={`${total} total sessions`}>
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           className="input"
           placeholder="Filter by username..."
@@ -48,9 +66,35 @@ export default function Sessions() {
           onChange={e => { setUsername(e.target.value); setPage(0) }}
           style={{ width: 220 }}
         />
-        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          {total} results
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>From:</span>
+          <input 
+            type="date" 
+            className="input" 
+            value={fromDate}
+            onChange={e => { setFromDate(e.target.value); setPage(0) }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>To:</span>
+          <input 
+            type="date" 
+            className="input" 
+            value={toDate}
+            onChange={e => { setToDate(e.target.value); setPage(0) }}
+          />
+        </div>
+        
+        <select 
+          className="input" 
+          value={limit} 
+          onChange={e => { setLimit(Number(e.target.value)); setPage(0) }}
+          style={{ marginLeft: 'auto', width: 'auto' }}
+        >
+          <option value={20}>20 per page</option>
+          <option value={50}>50 per page</option>
+          <option value={100}>100 per page</option>
+        </select>
       </div>
 
       <div className="table-wrapper">
@@ -113,13 +157,13 @@ export default function Sessions() {
       </div>
 
       {/* Pagination */}
-      {total > PER_PAGE && (
+      {total > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
           <button className="btn btn-ghost btn-sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
           <span style={{ padding: '6px 12px', color: 'var(--text-secondary)', fontSize: 13 }}>
-            Page {page + 1} of {Math.ceil(total / PER_PAGE)}
+            Page {page + 1} of {Math.ceil(total / limit) || 1} ({total} total results)
           </span>
-          <button className="btn btn-ghost btn-sm" disabled={(page + 1) * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <button className="btn btn-ghost btn-sm" disabled={(page + 1) * limit >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       )}
     </Layout>

@@ -234,14 +234,21 @@ export default function Nodes() {
                     style={{ flex: 1, borderRadius: '8px', border: installTab === 'docker' ? 'none' : '' }}
                     onClick={() => setInstallTab('docker')}
                   >
-                    Docker (Recommended)
+                    Docker
                   </button>
                   <button 
                     className={`btn ${installTab === 'native' ? 'btn-primary' : 'btn-ghost'}`} 
                     style={{ flex: 1, borderRadius: '8px', border: installTab === 'native' ? 'none' : '' }}
                     onClick={() => setInstallTab('native')}
                   >
-                    Native (Systemd)
+                    Native (Standalone)
+                  </button>
+                  <button 
+                    className={`btn ${installTab === 'native-zip' ? 'btn-primary' : 'btn-ghost'}`} 
+                    style={{ flex: 1, borderRadius: '8px', border: installTab === 'native-zip' ? 'none' : '' }}
+                    onClick={() => setInstallTab('native-zip')}
+                  >
+                    Native (ZIP)
                   </button>
                 </div>
               </div>
@@ -313,13 +320,36 @@ export default function Nodes() {
                   
                   <strong style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>What this script executes:</strong>
                   <ul style={{ paddingLeft: '20px', margin: 0, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li>Downloads the latest agent collector zip from this server.</li>
-                    {installTab === 'docker' ? (
-                      <li>Builds and starts the <code>auditvisual-collector</code> docker container.</li>
-                    ) : (
-                      <li>Extracts the collector and installs it as a native <code>auditvisual-collector</code> systemd service.</li>
+                    {installTab === 'docker' && (
+                      <>
+                        <li><strong>Prerequisites:</strong> Installs <code>auditd</code> (if missing) to enable kernel logging.</li>
+                        <li><strong>Configuration:</strong> Creates <code>/opt/auditvisual-agent/docker-compose.yml</code> with your secure token.</li>
+                        <li><strong>Isolation:</strong> Mounts host logs as <strong>Read-Only</strong> (<code>:ro</code>) to guarantee system safety.</li>
+                        <li><strong>Execution:</strong> Pulls the collector image and starts it securely in the background.</li>
+                      </>
+                    )}
+                    {installTab === 'native' && (
+                      <>
+                        <li><strong>Prerequisites:</strong> Safely installs <code>auditd</code> and <code>python3</code> (only if missing, strictly no-upgrade).</li>
+                        <li><strong>Deployment:</strong> Embeds agent source code directly into <code>/opt/auditvisual-agent</code> (0 downloads).</li>
+                        <li><strong>Isolation:</strong> Creates a <code>venv</code> and installs dependencies (<code>watchdog</code>, <code>schedule</code>) without touching system Python.</li>
+                        <li><strong>Execution:</strong> Registers a native Systemd service to run the agent continuously.</li>
+                      </>
+                    )}
+                    {installTab === 'native-zip' && (
+                      <>
+                        <li><strong>Prerequisites:</strong> Safely installs <code>auditd</code>, <code>python3</code>, and <code>unzip</code> (only if missing, strictly no-upgrade).</li>
+                        <li><strong>Deployment:</strong> Downloads the collector ZIP from this server and extracts to <code>/opt/auditvisual-agent</code>.</li>
+                        <li><strong>Isolation:</strong> Creates a <code>venv</code> and installs dependencies without touching system Python.</li>
+                        <li><strong>Execution:</strong> Registers a native Systemd service to run the agent continuously.</li>
+                      </>
                     )}
                     <li>Automatically configures the agent to communicate with <strong>{apiUrl}</strong>.</li>
+                    {(installTab === 'native' || installTab === 'native-zip') && (
+                      <li style={{ marginTop: '8px' }}>
+                        <strong style={{ color: 'var(--success)' }}>✔ Zero-Impact Guarantee:</strong> Never upgrades system packages, uses isolated <code>venv</code>, and enforces strict CPU (30%) & RAM (150MB) limits.
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>

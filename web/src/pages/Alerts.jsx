@@ -3,7 +3,7 @@ import { CheckCircle, Filter, AlertTriangle, RefreshCw } from 'lucide-react'
 import Layout from '../components/Layout'
 import { api } from '../api/client'
 import { useNodeContext } from '../NodeContext'
-import { formatDistanceToNow, fromUnixTime } from 'date-fns'
+import { formatDistanceToNow, fromUnixTime, getUnixTime, parseISO } from 'date-fns'
 
 const SEV_COLOR  = { LOW: 'var(--sev-low)', MEDIUM: 'var(--sev-medium)', HIGH: 'var(--sev-high)', CRITICAL: 'var(--sev-critical)' }
 const SEVERITIES = ['', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
@@ -14,25 +14,39 @@ export default function Alerts() {
   const [total, setTotal]    = useState(0)
   const [loading, setLoading]  = useState(true)
   const [severity, setSeverity] = useState('')
+  const [alertType, setAlertType] = useState('')
   const [resolved, setResolved] = useState(false)
   const [page, setPage]       = useState(0)
-  const PER_PAGE = 30
+  const [limit, setLimit]     = useState(50)
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate]     = useState('')
 
   async function load() {
     setLoading(true)
+    let from_ts = undefined
+    let to_ts = undefined
+    
+    if (fromDate) from_ts = getUnixTime(parseISO(fromDate))
+    if (toDate) {
+      to_ts = getUnixTime(parseISO(toDate)) + 86399 
+    }
+
     try {
       const d = await api.alerts({
         node_id: selectedNodeId || undefined,
         severity: severity || undefined,
+        alert_type: alertType || undefined,
         resolved: resolved,
-        limit: PER_PAGE,
-        offset: page * PER_PAGE,
+        from: from_ts,
+        to: to_ts,
+        limit: limit,
+        offset: page * limit,
       })
       setAlerts(d.alerts); setTotal(d.total)
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [severity, resolved, page, selectedNodeId])
+  useEffect(() => { load() }, [severity, alertType, resolved, page, limit, fromDate, toDate, selectedNodeId])
 
   async function resolve(id) {
     await api.resolveAlert(id)
@@ -56,14 +70,54 @@ export default function Alerts() {
         )
       }
     >
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
         <select className="input" value={severity} onChange={e => { setSeverity(e.target.value); setPage(0) }}>
           {SEVERITIES.map(s => <option key={s} value={s}>{s || 'All Severities'}</option>)}
         </select>
+        
+        <input
+          className="input"
+          placeholder="Filter by type (e.g. MASS_DELETE)"
+          value={alertType}
+          onChange={e => { setAlertType(e.target.value); setPage(0) }}
+          style={{ width: 220 }}
+        />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>From:</span>
+          <input 
+            type="date" 
+            className="input" 
+            value={fromDate}
+            onChange={e => { setFromDate(e.target.value); setPage(0) }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>To:</span>
+          <input 
+            type="date" 
+            className="input" 
+            value={toDate}
+            onChange={e => { setToDate(e.target.value); setPage(0) }}
+          />
+        </div>
+
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
           <input type="checkbox" checked={resolved} onChange={e => { setResolved(e.target.checked); setPage(0) }} />
           Show resolved
         </label>
+        
+        <select 
+          className="input" 
+          value={limit} 
+          onChange={e => { setLimit(Number(e.target.value)); setPage(0) }}
+          style={{ marginLeft: 'auto', width: 'auto' }}
+        >
+          <option value={20}>20 per page</option>
+          <option value={50}>50 per page</option>
+          <option value={100}>100 per page</option>
+        </select>
+
         <button className="btn btn-ghost btn-sm" onClick={load}><RefreshCw size={13} /></button>
       </div>
 
@@ -104,13 +158,13 @@ export default function Alerts() {
         }
       </div>
 
-      {total > PER_PAGE && (
+      {total > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
           <button className="btn btn-ghost btn-sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Prev</button>
           <span style={{ padding: '6px 12px', color: 'var(--text-secondary)', fontSize: 13 }}>
-            Page {page + 1} of {Math.ceil(total / PER_PAGE)}
+            Page {page + 1} of {Math.ceil(total / limit) || 1} ({total} total alerts)
           </span>
-          <button className="btn btn-ghost btn-sm" disabled={(page + 1) * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <button className="btn btn-ghost btn-sm" disabled={(page + 1) * limit >= total} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       )}
     </Layout>

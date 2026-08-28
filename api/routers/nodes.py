@@ -103,6 +103,32 @@ def generate_node_token(user=Depends(get_current_user)):
     finally:
         conn.close()
 
+import zipfile
+
+@router.get("/install/collector.zip")
+def download_collector_zip():
+    """Download the collector source code as a ZIP file."""
+    collector_dir = "/app/collector_src"
+    if not os.path.exists(collector_dir):
+        raise HTTPException(status_code=500, detail="Collector source directory not found on server.")
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for root, _, files in os.walk(collector_dir):
+            if '__pycache__' in root or 'venv' in root:
+                continue
+            for file in files:
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, collector_dir)
+                zip_file.write(file_path, rel_path)
+    
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=collector.zip"}
+    )
+
 @router.get("/install/script", response_class=PlainTextResponse)
 def get_install_script(mode: str = "docker", api_url: str = "http://localhost:7432", token: str = None):
     """Get the one-liner bash script for installing the agent."""
@@ -181,78 +207,293 @@ echo "================================================="
 """
         return script
     elif mode == "native":
+        # Read the collector source files
+        collector_dir = "/app/collector_src"
+        if not os.path.exists(collector_dir):
+            raise HTTPException(status_code=500, detail="Collector source directory not found on server.")
+            
+        file_contents = {}
+        for root, _, files in os.walk(collector_dir):
+            if '__pycache__' in root or 'venv' in root:
+                continue
+            for file in files:
+                file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(file_path, collector_dir)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        file_contents[rel_path] = f.read()
+                except Exception as e:
+                    pass # skip binary or unreadable files (we shouldn't have any, but just in case)
+        
+        # Build the script that embeds these files
         script = f"""#!/bin/bash
 set -e
 
 echo "================================================="
-echo " Auditd GUI Agent Installer (Native/Systemd)"
+echo " Auditd GUI Agent Installer (Native Standalone)"
 echo "================================================="
 
 echo "[1/6] Installing prerequisites..."
-if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins python3-pip python3-venv unzip curl >/dev/null 2>&1
-elif command -v dnf >/dev/null 2>&1; then
-    sudo dnf install -y audit python3-pip unzip curl >/dev/null 2>&1
-elif command -v yum >/dev/null 2>&1; then
-    sudo yum install -y audit python3-pip unzip curl >/dev/null 2>&1
-elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -Sy --noconfirm audit python-pip unzip curl >/dev/null 2>&1
-elif command -v zypper >/dev/null 2>&1; then
-    sudo zypper install -y audit python3-pip unzip curl >/dev/null 2>&1
-elif command -v apk >/dev/null 2>&1; then
-    sudo apk add audit py3-pip unzip curl >/dev/null 2>&1
+
+# Only install what is strictly missing to avoid unintended version upgrades
+PKGS_APT=""
+PKGS_DNF=""
+PKGS_PACMAN=""
+PKGS_APK=""
+
+if ! command -v auditd >/dev/null 2>&1; then
+    PKGS_APT="auditd audispd-plugins"
+    PKGS_DNF="audit"
+    PKGS_PACMAN="audit"
+    PKGS_APK="audit"
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+    PKGS_APT="$PKGS_APT python3"
+    PKGS_DNF="$PKGS_DNF python3"
+    PKGS_PACMAN="$PKGS_PACMAN python"
+    PKGS_APK="$PKGS_APK python3"
+fi
+
+if ! python3 -c "import venv" >/dev/null 2>&1; then
+    PKGS_APT="$PKGS_APT python3-venv"
+fi
+
+if [ -n "$PKGS_APT" ] || [ -n "$PKGS_DNF" ] || [ -n "$PKGS_PACMAN" ]; then
+    echo "Missing dependencies detected. Installing..."
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update -qq && sudo apt-get install -y --no-upgrade $PKGS_APT >/dev/null 2>&1
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN >/dev/null 2>&1
+    elif command -v zypper >/dev/null 2>&1; then
+        sudo zypper install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v apk >/dev/null 2>&1; then
+        sudo apk add --no-upgrade $PKGS_APK >/dev/null 2>&1
+    else
+        echo "[!] Unsupported package manager. Please install dependencies manually."
+        exit 1
+    fi
 else
-    echo "[!] Unsupported package manager. Please install dependencies manually."
-    exit 1
+    echo "All dependencies are already met (auditd, python3, venv). Skipping installation."
 fi
 
 sudo systemctl enable --now auditd || true
 
-echo "[2/6] Downloading Agent Source..."
-mkdir -p /opt/auditvisual-agent
-cd /opt/auditvisual-agent
-curl -sL "{api_url}/api/nodes/install/collector.zip" -o collector.zip
-unzip -o -q collector.zip -d collector
-rm collector.zip
+echo "[2/6] Setting up Agent Directory..."
+AGENT_DIR="/opt/auditvisual-agent/collector"
+sudo mkdir -p $AGENT_DIR
+sudo chown -R $USER:$USER /opt/auditvisual-agent
+cd $AGENT_DIR
 
-echo "[3/6] Setting up Python Environment..."
-cd collector
-python3 -m venv venv || python3 -m virtualenv venv || echo "Assuming system python can handle it..."
-if [ -f venv/bin/activate ]; then
-    source venv/bin/activate
+echo "[3/6] Embedding Python Source Code..."
+"""
+        # Append each file's content
+        for rel_path, content in file_contents.items():
+            # Ensure the directory exists
+            dir_name = os.path.dirname(rel_path)
+            if dir_name:
+                script += f"mkdir -p {dir_name}\n"
+            
+            # Use a unique EOF delimiter to avoid conflicts if the code itself contains EOF
+            eof_marker = "EOF_AGENT_FILE_CHUNK"
+            script += f"cat << '{eof_marker}' > {rel_path}\n"
+            script += content
+            if not content.endswith("\n"):
+                script += "\n"
+            script += f"{eof_marker}\n\n"
+
+        script += f"""
+echo "[4/6] Setting up strict Python Virtual Environment..."
+cd $AGENT_DIR
+# Enforce venv creation to avoid breaking system packages
+if ! python3 -m venv venv; then
+    echo "[!] ERROR: Failed to create virtual environment."
+    echo "    Please install the python3-venv package for your system."
+    echo "    Debian/Ubuntu: sudo apt install python3-venv"
+    echo "    CentOS/RHEL: sudo dnf install python3"
+    exit 1
 fi
-pip install -r requirements.txt >/dev/null 2>&1 || pip3 install --break-system-packages -r requirements.txt >/dev/null 2>&1
 
-echo "[4/6] Configuring Environment Variables..."
+# Install requirements safely inside the venv
+./venv/bin/pip install -r requirements.txt >/dev/null 2>&1
+
+echo "[5/6] Configuring Environment Variables..."
 cat << 'EOF' > .env
 API_URL={api_url}
 NODE_API_KEY={node_api_key}
 EOF
 
-echo "[5/6] Creating Systemd Service..."
-sudo bash -c 'cat << EOF > /etc/systemd/system/auditvisual-collector.service
+echo "[6/6] Creating & Starting Systemd Service..."
+
+# Dynamically detect auth log location (Ubuntu/Debian vs RHEL/CentOS)
+if [ -f /var/log/secure ]; then
+    DETECTED_AUTH_LOG="/var/log/secure"
+else
+    DETECTED_AUTH_LOG="/var/log/auth.log"
+fi
+
+cat << EOF | sudo tee /etc/systemd/system/auditvisual-collector.service > /dev/null
 [Unit]
-Description=Auditd GUI Collector Agent
-After=network.target
+Description=AuditVisual Collector Agent
+After=network.target auditd.service
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/opt/auditvisual-agent/collector
-ExecStart=/bin/bash -c "if [ -f venv/bin/activate ]; then source venv/bin/activate; fi && python3 main.py"
+Environment=AUDIT_LOG_PATH=/var/log/audit/audit.log
+Environment=AUTH_LOG_PATH=${DETECTED_AUTH_LOG}
+ExecStart=/opt/auditvisual-agent/collector/venv/bin/python3 main.py
 Restart=always
-RestartSec=3
+RestartSec=10
+
+# Zero-Impact Resource Limits
+CPUQuota=30%
+MemoryHigh=100M
+MemoryMax=150M
 
 [Install]
 WantedBy=multi-user.target
-EOF'
+EOF
 
-echo "[6/6] Starting Service..."
 sudo systemctl daemon-reload
 sudo systemctl enable --now auditvisual-collector.service || true
 
 echo "================================================="
-echo " Agent installed successfully!"
+echo " Agent installed successfully in STANDALONE mode!"
+echo " Zero external downloads required for the source."
+echo " Check status with: sudo systemctl status auditvisual-collector.service"
+echo "================================================="
+"""
+        return script
+    elif mode == "native-zip":
+        script = f"""#!/bin/bash
+set -e
+
+echo "================================================="
+echo " Auditd GUI Agent Installer (Native ZIP)"
+echo "================================================="
+
+echo "[1/6] Installing prerequisites..."
+
+PKGS_APT=""
+PKGS_DNF=""
+PKGS_PACMAN=""
+PKGS_APK=""
+
+if ! command -v auditd >/dev/null 2>&1; then
+    PKGS_APT="auditd audispd-plugins"
+    PKGS_DNF="audit"
+    PKGS_PACMAN="audit"
+    PKGS_APK="audit"
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+    PKGS_APT="$PKGS_APT python3"
+    PKGS_DNF="$PKGS_DNF python3"
+    PKGS_PACMAN="$PKGS_PACMAN python"
+    PKGS_APK="$PKGS_APK python3"
+fi
+
+if ! python3 -c "import venv" >/dev/null 2>&1; then
+    PKGS_APT="$PKGS_APT python3-venv"
+fi
+
+if ! command -v unzip >/dev/null 2>&1; then
+    PKGS_APT="$PKGS_APT unzip"
+    PKGS_DNF="$PKGS_DNF unzip"
+    PKGS_PACMAN="$PKGS_PACMAN unzip"
+    PKGS_APK="$PKGS_APK unzip"
+fi
+
+if [ -n "$PKGS_APT" ] || [ -n "$PKGS_DNF" ] || [ -n "$PKGS_PACMAN" ]; then
+    echo "Missing dependencies detected. Installing..."
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update -qq && sudo apt-get install -y --no-upgrade $PKGS_APT >/dev/null 2>&1
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN >/dev/null 2>&1
+    elif command -v zypper >/dev/null 2>&1; then
+        sudo zypper install -y $PKGS_DNF >/dev/null 2>&1
+    elif command -v apk >/dev/null 2>&1; then
+        sudo apk add --no-upgrade $PKGS_APK >/dev/null 2>&1
+    else
+        echo "[!] Unsupported package manager. Please install dependencies manually."
+        exit 1
+    fi
+else
+    echo "All dependencies are already met (auditd, python3, venv, unzip). Skipping installation."
+fi
+
+sudo systemctl enable --now auditd || true
+
+echo "[2/6] Setting up Agent Directory..."
+AGENT_DIR="/opt/auditvisual-agent/collector"
+sudo mkdir -p $AGENT_DIR
+sudo chown -R $USER:$USER /opt/auditvisual-agent
+cd $AGENT_DIR
+
+echo "[3/6] Downloading and extracting collector..."
+curl -sL "{api_url}/api/nodes/install/collector.zip" -o collector.zip
+unzip -o collector.zip
+rm collector.zip
+
+echo "[4/6] Setting up strict Python Virtual Environment..."
+if ! python3 -m venv venv; then
+    echo "[!] ERROR: Failed to create virtual environment."
+    exit 1
+fi
+./venv/bin/pip install -r requirements.txt >/dev/null 2>&1
+
+echo "[5/6] Configuring Environment Variables..."
+cat << 'EOF' > .env
+API_URL={api_url}
+NODE_API_KEY={node_api_key}
+EOF
+
+echo "[6/6] Creating & Starting Systemd Service..."
+if [ -f /var/log/secure ]; then
+    DETECTED_AUTH_LOG="/var/log/secure"
+else
+    DETECTED_AUTH_LOG="/var/log/auth.log"
+fi
+
+cat << EOF | sudo tee /etc/systemd/system/auditvisual-collector.service > /dev/null
+[Unit]
+Description=AuditVisual Collector Agent
+After=network.target auditd.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/auditvisual-agent/collector
+Environment=AUDIT_LOG_PATH=/var/log/audit/audit.log
+Environment=AUTH_LOG_PATH=${{DETECTED_AUTH_LOG}}
+ExecStart=/opt/auditvisual-agent/collector/venv/bin/python3 main.py
+Restart=always
+RestartSec=10
+
+# Zero-Impact Resource Limits
+CPUQuota=30%
+MemoryHigh=100M
+MemoryMax=150M
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now auditvisual-collector.service || true
+
+echo "================================================="
+echo " Agent installed successfully in ZIP mode!"
 echo " Check status with: sudo systemctl status auditvisual-collector.service"
 echo "================================================="
 """
@@ -260,36 +501,4 @@ echo "================================================="
     else:
         raise HTTPException(status_code=400, detail="Invalid mode. Must be 'docker' or 'native'")
 
-import zipfile
-import os
-
-@router.get("/install/collector.zip")
-def download_collector_zip():
-    """Download the zipped collector source code for native installations."""
-    collector_dir = "/app/collector_src"
-    if not os.path.exists(collector_dir):
-        raise HTTPException(status_code=404, detail="Collector source directory not found. Is it mounted?")
-    
-    # Create a zip file in memory
-    memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(collector_dir):
-            # Do not zip __pycache__ or venv
-            if '__pycache__' in root or 'venv' in root:
-                continue
-            for file in files:
-                file_path = os.path.join(root, file)
-                # The arcname should be relative to the collector_dir
-                arcname = os.path.relpath(file_path, collector_dir)
-                zipf.write(file_path, arcname)
-                
-    memory_file.seek(0)
-    
-    return StreamingResponse(
-        memory_file, 
-        media_type="application/zip", 
-        headers={
-            "Content-Disposition": "attachment; filename=collector.zip"
-        }
-    )
 

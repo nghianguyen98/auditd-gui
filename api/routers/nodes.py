@@ -153,16 +153,17 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 echo "[1/4] Installing prerequisites (auditd)..."
+export DEBIAN_FRONTEND=noninteractive
 if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y auditd audispd-plugins >/dev/null 2>&1
+    sudo -E apt-get update -qq && sudo -E apt-get install -y auditd audispd-plugins
 elif command -v dnf >/dev/null 2>&1; then
-    sudo dnf install -y audit >/dev/null 2>&1
+    sudo dnf install -y audit
 elif command -v yum >/dev/null 2>&1; then
-    sudo yum install -y audit >/dev/null 2>&1
+    sudo yum install -y audit
 elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -Sy --noconfirm audit >/dev/null 2>&1
+    sudo pacman -Sy --noconfirm audit
 elif command -v zypper >/dev/null 2>&1; then
-    sudo zypper install -y audit >/dev/null 2>&1
+    sudo zypper install -y audit
 elif command -v apk >/dev/null 2>&1; then
     sudo apk add audit >/dev/null 2>&1
 else
@@ -261,18 +262,19 @@ fi
 
 if [ -n "$PKGS_APT" ] || [ -n "$PKGS_DNF" ] || [ -n "$PKGS_PACMAN" ]; then
     echo "Missing dependencies detected. Installing..."
+    export DEBIAN_FRONTEND=noninteractive
     if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get update -qq && sudo apt-get install -y --no-upgrade $PKGS_APT >/dev/null 2>&1
+        sudo -E apt-get update -qq && sudo -E apt-get install -y --no-upgrade $PKGS_APT
     elif command -v dnf >/dev/null 2>&1; then
-        sudo dnf install -y $PKGS_DNF >/dev/null 2>&1
+        sudo dnf install -y $PKGS_DNF
     elif command -v yum >/dev/null 2>&1; then
-        sudo yum install -y $PKGS_DNF >/dev/null 2>&1
+        sudo yum install -y $PKGS_DNF
     elif command -v pacman >/dev/null 2>&1; then
-        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN >/dev/null 2>&1
+        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN
     elif command -v zypper >/dev/null 2>&1; then
-        sudo zypper install -y $PKGS_DNF >/dev/null 2>&1
+        sudo zypper install -y $PKGS_DNF
     elif command -v apk >/dev/null 2>&1; then
-        sudo apk add --no-upgrade $PKGS_APK >/dev/null 2>&1
+        sudo apk add --no-upgrade $PKGS_APK
     else
         echo "[!] Unsupported package manager. Please install dependencies manually."
         exit 1
@@ -412,18 +414,19 @@ fi
 
 if [ -n "$PKGS_APT" ] || [ -n "$PKGS_DNF" ] || [ -n "$PKGS_PACMAN" ]; then
     echo "Missing dependencies detected. Installing..."
+    export DEBIAN_FRONTEND=noninteractive
     if command -v apt-get >/dev/null 2>&1; then
-        sudo apt-get update -qq && sudo apt-get install -y --no-upgrade $PKGS_APT >/dev/null 2>&1
+        sudo -E apt-get update -qq && sudo -E apt-get install -y --no-upgrade $PKGS_APT
     elif command -v dnf >/dev/null 2>&1; then
-        sudo dnf install -y $PKGS_DNF >/dev/null 2>&1
+        sudo dnf install -y $PKGS_DNF
     elif command -v yum >/dev/null 2>&1; then
-        sudo yum install -y $PKGS_DNF >/dev/null 2>&1
+        sudo yum install -y $PKGS_DNF
     elif command -v pacman >/dev/null 2>&1; then
-        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN >/dev/null 2>&1
+        sudo pacman -Sy --needed --noconfirm $PKGS_PACMAN
     elif command -v zypper >/dev/null 2>&1; then
-        sudo zypper install -y $PKGS_DNF >/dev/null 2>&1
+        sudo zypper install -y $PKGS_DNF
     elif command -v apk >/dev/null 2>&1; then
-        sudo apk add --no-upgrade $PKGS_APK >/dev/null 2>&1
+        sudo apk add --no-upgrade $PKGS_APK
     else
         echo "[!] Unsupported package manager. Please install dependencies manually."
         exit 1

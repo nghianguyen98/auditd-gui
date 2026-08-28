@@ -67,7 +67,7 @@ install_auditd() {
 
   if [[ "$OS" == "ubuntu" || "$OS" == "debian" || "$OS_LIKE" == *"debian"* ]]; then
     apt-get update -qq
-    apt-get install -y -qq auditd audispd-plugins
+    apt-get install -y -qq --no-upgrade auditd audispd-plugins
   elif [[ "$OS" == "centos" || "$OS" == "rhel" || "$OS" == "fedora" || "$OS" == "rocky" || "$OS" == "almalinux" ]]; then
     if command -v dnf &>/dev/null; then
       dnf install -y -q audit

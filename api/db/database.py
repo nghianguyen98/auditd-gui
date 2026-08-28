@@ -158,6 +158,18 @@ def init_db():
             conn.execute("UPDATE nodes SET token = ?", (default_token,))
             logger.info("Migrated nodes table: Added token column with fallback")
             
+        # Ensure central server node exists for all-in-one deployments
+        node_count = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+        if node_count == 0:
+            default_token = os.getenv("NODE_API_KEY")
+            if default_token:
+                import time
+                conn.execute(
+                    "INSERT INTO nodes (hostname, alias, token, status, last_seen) VALUES (?, ?, ?, 'offline', ?)",
+                    ("central-server", "Central Server", default_token, time.time())
+                )
+                logger.info("Created default Central Server node in database.")
+
         conn.commit()
 
         logger.info(f"Database initialized at {DB_PATH}")

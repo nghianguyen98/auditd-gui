@@ -256,9 +256,10 @@ if ! command -v python3 >/dev/null 2>&1; then
     PKGS_APK="$PKGS_APK python3"
 fi
 
-if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
+if ! python3 -m venv /tmp/venv_check_$$ >/dev/null 2>&1; then
     PKGS_APT="$PKGS_APT python3-venv"
 fi
+rm -rf /tmp/venv_check_$$
 
 if [ -n "$PKGS_APT" ] || [ -n "$PKGS_DNF" ] || [ -n "$PKGS_PACMAN" ]; then
     echo "Missing dependencies detected. Installing..."

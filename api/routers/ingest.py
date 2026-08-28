@@ -6,6 +6,7 @@ import os
 import time
 import logging
 import json
+import sqlite3
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +81,19 @@ def update_node_presence(conn, node_id: int, db_hostname: str, payload_hostname:
     # If the payload hostname is different and the current is a pending placeholder, update it.
     # Otherwise just update last_seen and ip_address.
     if db_hostname.startswith("pending-") and payload_hostname:
-        conn.execute(
-            "UPDATE nodes SET hostname = ?, ip_address = COALESCE(?, ip_address), last_seen = ?, status = 'online' WHERE id = ?",
-            (payload_hostname, payload_ip, now, node_id)
-        )
+        try:
+            conn.execute(
+                "UPDATE nodes SET hostname = ?, ip_address = COALESCE(?, ip_address), last_seen = ?, status = 'online' WHERE id = ?",
+                (payload_hostname, payload_ip, now, node_id)
+            )
+        except sqlite3.IntegrityError:
+            # If the hostname already exists, archive the old one to preserve its data, then take over the hostname.
+            old_suffix = f"-archived-{int(now)}"
+            conn.execute("UPDATE nodes SET hostname = hostname || ? WHERE hostname = ?", (old_suffix, payload_hostname))
+            conn.execute(
+                "UPDATE nodes SET hostname = ?, ip_address = COALESCE(?, ip_address), last_seen = ?, status = 'online' WHERE id = ?",
+                (payload_hostname, payload_ip, now, node_id)
+            )
     else:
         conn.execute(
             "UPDATE nodes SET last_seen = ?, status = 'online', ip_address = COALESCE(?, ip_address) WHERE id = ?",

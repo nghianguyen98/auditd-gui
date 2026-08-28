@@ -9,7 +9,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/ingest", tags=["Ingest"])
+router = APIRouter(prefix="/api/ingest", tags=["Ingest"])
 
 def verify_node_token(x_node_key: str = Header(...)):
     conn = get_connection()

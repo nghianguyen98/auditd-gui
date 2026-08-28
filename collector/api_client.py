@@ -59,9 +59,25 @@ class ApiClient:
         }
         
         try:
-            resp = requests.post(f"{API_URL}/api/logs", json=payload, headers=headers, timeout=5)
+            resp = requests.post(f"{API_URL}/api/ingest/logs", json=payload, headers=headers, timeout=5)
             resp.raise_for_status()
             logger.info(f"Successfully sent batch to API ({len(payload['commands'])} cmds, {len(payload['file_events'])} file evts, {len(payload['sessions'])} sessions)")
         except Exception as e:
             logger.error(f"Failed to send batch to API: {e}")
             # If we fail, we could re-buffer, but for now we drop to avoid memory bloat if API is down for long
+
+    def ping(self):
+        if not API_KEY:
+            return
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY
+        }
+        payload = {
+            "hostname": HOSTNAME
+        }
+        try:
+            resp = requests.post(f"{API_URL}/api/ingest/ping", json=payload, headers=headers, timeout=5)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to send ping to API: {e}")

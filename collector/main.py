@@ -207,6 +207,9 @@ class CollectorService:
         logger.info(f"  Auth log:  {AUTH_LOG}")
         logger.info(f"  API URL:   {os.getenv('API_URL', 'http://localhost:8000')}")
 
+        # Send initial ping to mark node as online immediately
+        self.api.ping()
+
         # Setup watchers
         audit_watcher = TailWatcher(AUDIT_LOG, self._process_audit_line)
         auth_watcher  = TailWatcher(AUTH_LOG,  self._process_auth_line)
@@ -216,13 +219,18 @@ class CollectorService:
         observer.schedule(auth_watcher,  path=os.path.dirname(AUTH_LOG) or ".",  recursive=False)
         observer.start()
 
-        # Periodic buffer flush (every 5 seconds to API)
+        # Periodic buffer flush (every 5 seconds to API) and Ping (every 30 seconds)
         flush_thread_stop = threading.Event()
         def flush_loop():
+            ticks = 0
             while not flush_thread_stop.is_set():
                 time.sleep(5)
                 self._flush_audit_buffer()
                 self.api.flush()
+                
+                ticks += 1
+                if ticks % 6 == 0:  # Every 30 seconds (6 * 5s)
+                    self.api.ping()
 
         flush_thread = threading.Thread(target=flush_loop, daemon=True)
         flush_thread.start()

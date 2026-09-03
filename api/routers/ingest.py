@@ -36,24 +36,25 @@ class SessionItem(BaseModel):
     host: Optional[str] = None
 
 class CommandItem(BaseModel):
-    session_id: int
+    session_id: Optional[int] = None
     timestamp: float
     username: str
     auid: int
     effective_uid: int
     effective_user: Optional[str] = None
     command: str
-    args: Optional[str] = None
+    args: Optional[List[str]] = []
     exe: Optional[str] = None
     cwd: Optional[str] = None
     key: Optional[str] = None
 
 class FileEventItem(BaseModel):
-    session_id: int
+    session_id: Optional[int] = None
     timestamp: float
     username: str
     auid: int
-    path: str
+    effective_uid: int
+    paths: List[str]
     action: str
     key: Optional[str] = None
 
@@ -144,7 +145,7 @@ def ingest_logs(payload: BatchPayload, node_info: dict = Depends(verify_node_tok
     # Process Commands
     for cmd in payload.commands:
         cmd_dict = cmd.dict()
-        cmd_dict["args"] = json.loads(cmd_dict["args"]) if cmd_dict.get("args") else []
+        # args is already a list from Pydantic
         command_id = _ingestor.ingest_command(node_id, cmd_dict)
         session_id = _ingestor.get_or_create_session(node_id, cmd.auid, cmd.timestamp, cmd.username)
         _alert_engine.check_command(node_id, cmd_dict, session_id, command_id)
@@ -152,8 +153,6 @@ def ingest_logs(payload: BatchPayload, node_info: dict = Depends(verify_node_tok
     # Process File Events
     for ev in payload.file_events:
         ev_dict = ev.dict()
-        # Ingestor expects 'paths' list
-        ev_dict["paths"] = [ev_dict["path"]]
         _ingestor.ingest_file_event(node_id, ev_dict)
         session_id = _ingestor.get_or_create_session(node_id, ev.auid, ev.timestamp, ev.username)
         _alert_engine.check_file_event(node_id, ev_dict, session_id)

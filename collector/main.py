@@ -152,6 +152,11 @@ class CollectorService:
                 if cmd:
                     cmd["username"] = UidResolver.uid_to_name(cmd["auid"])
                     self.api.buffer_command(cmd)
+            elif event_group.is_file_event():
+                ev = event_group.to_file_event()
+                if ev:
+                    ev["username"] = UidResolver.uid_to_name(ev["auid"])
+                    self.api.buffer_file_event(ev)
 
     # ─── Auth log processing ───────────────────────────────────────────────────
     def _process_auth_line(self, line: str):

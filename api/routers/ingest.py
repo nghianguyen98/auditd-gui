@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ingest", tags=["Ingest"])
 
-def verify_node_token(x_node_key: str = Header(...)):
+def verify_node_token(x_api_key: str = Header(...)):
     conn = get_connection()
     try:
-        row = conn.execute("SELECT id, hostname FROM nodes WHERE token = ?", (x_node_key,)).fetchone()
+        row = conn.execute("SELECT id, hostname FROM nodes WHERE token = ?", (x_api_key,)).fetchone()
         if not row:
             raise HTTPException(status_code=401, detail="Invalid Node API Key")
         return {"id": row["id"], "hostname": row["hostname"]}

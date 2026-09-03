@@ -366,8 +366,8 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now auditvisual-collector.service || true
-
+sudo systemctl enable auditvisual-collector.service || true
+sudo systemctl restart auditvisual-collector.service || true
 echo "================================================="
 echo " Agent installed successfully in STANDALONE mode!"
 echo " Zero external downloads required for the source."
@@ -497,7 +497,8 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now auditvisual-collector.service || true
+sudo systemctl enable auditvisual-collector.service || true
+sudo systemctl restart auditvisual-collector.service || true
 
 echo "================================================="
 echo " Agent installed successfully in ZIP mode!"

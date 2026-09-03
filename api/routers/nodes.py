@@ -20,8 +20,8 @@ def list_nodes(user=Depends(get_current_user)):
             is_online = (now - node['last_seen']) < 120
             node['status'] = 'online' if is_online else 'offline'
             
-            # Hide pending offline nodes (they haven't connected yet)
-            if node['hostname'].startswith('pending-') and not is_online:
+            # Hide pending nodes completely (they haven't connected yet)
+            if node['hostname'].startswith('pending-'):
                 continue
                 
             nodes.append(node)

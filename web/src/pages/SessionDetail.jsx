@@ -54,7 +54,9 @@ export default function SessionDetail() {
       api.sessionCommands(id, { limit: 500 }),
       api.sessionFiles(id),
     ]).then(([s, c, f]) => {
-      setSession(s); setCommands(c); setFiles(f)
+      setSession(s); 
+      setCommands([...c].sort((a, b) => b.timestamp - a.timestamp)); 
+      setFiles([...f].sort((a, b) => b.timestamp - a.timestamp));
     }).catch(console.error)
     .finally(() => setLoading(false))
   }, [id])

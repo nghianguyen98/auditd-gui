@@ -152,24 +152,30 @@ if ! command -v docker >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "[1/4] Installing prerequisites (auditd)..."
-export DEBIAN_FRONTEND=noninteractive
-if command -v apt-get >/dev/null 2>&1; then
-    sudo -E apt-get update -qq && sudo -E apt-get install -y auditd audispd-plugins
-elif command -v dnf >/dev/null 2>&1; then
-    sudo dnf install -y audit
-elif command -v yum >/dev/null 2>&1; then
-    sudo yum install -y audit
-elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -Sy --noconfirm audit
-elif command -v zypper >/dev/null 2>&1; then
-    sudo zypper install -y audit
-elif command -v apk >/dev/null 2>&1; then
-    sudo apk add audit >/dev/null 2>&1
+echo "[1/4] Checking prerequisites (auditd)..."
+if ! command -v auditd >/dev/null 2>&1; then
+    echo "Installing auditd..."
+    export DEBIAN_FRONTEND=noninteractive
+    if command -v apt-get >/dev/null 2>&1; then
+        sudo -E apt-get update -qq && sudo -E apt-get install -y --no-upgrade auditd audispd-plugins
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y audit
+    elif command -v yum >/dev/null 2>&1; then
+        sudo yum install -y audit
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -Sy --needed --noconfirm audit
+    elif command -v zypper >/dev/null 2>&1; then
+        sudo zypper install -y audit
+    elif command -v apk >/dev/null 2>&1; then
+        sudo apk add --no-upgrade audit >/dev/null 2>&1
+    else
+        echo "[!] Unsupported package manager. Please install 'auditd' manually."
+        exit 1
+    fi
 else
-    echo "[!] Unsupported package manager. Please install 'auditd' manually."
-    exit 1
+    echo "auditd is already installed. Skipping package installation."
 fi
+
 
 sudo systemctl enable auditd || true
 sudo systemctl start auditd || true

@@ -13,6 +13,7 @@ export default function Nodes() {
 
   // Modals state
   const [showInstallModal, setShowInstallModal] = useState(false)
+  const [showUninstallModal, setShowUninstallModal] = useState(false)
   const [installTab, setInstallTab] = useState('docker')
   const [apiUrl, setApiUrl] = useState(window.location.origin)
   const [copied, setCopied] = useState(false)
@@ -58,9 +59,7 @@ export default function Nodes() {
     }
   }
 
-  function handleCopy() {
-    const text = `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`
-    
+  function handleCopyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
         .then(() => showCopied())
@@ -127,9 +126,14 @@ export default function Nodes() {
           <RefreshCw size={14} /> Refresh
         </button>
         {isAdmin && (
-          <button className="btn btn-primary btn-sm" onClick={handleOpenInstall}>
-            <Plus size={14} /> Install Agent
-          </button>
+          <>
+            <button className="btn btn-outline btn-sm" onClick={() => { setApiUrl(window.location.origin); setShowUninstallModal(true); }} style={{ borderColor: 'var(--error)', color: 'var(--error)' }}>
+              <Trash2 size={14} /> Uninstall Agent
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={handleOpenInstall}>
+              <Plus size={14} /> Install Agent
+            </button>
+          </>
         )}
       </div>
     }>
@@ -333,7 +337,7 @@ export default function Nodes() {
                     justifyContent: 'flex-end'
                   }}>
                     <button 
-                      onClick={handleCopy}
+                      onClick={() => handleCopyText(`curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`)}
                       className="btn btn-primary btn-sm" 
                       style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '100px', justifyContent: 'center' }}
                     >
@@ -401,6 +405,90 @@ export default function Nodes() {
             
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>
               <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={() => setShowInstallModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Uninstall Agent Modal */}
+      {showUninstallModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '650px', padding: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+              <div className="stat-icon" style={{ width: '48px', height: '48px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', flexShrink: 0 }}>
+                <Trash2 size={24} color="var(--error)" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontFamily: "'Outfit', sans-serif", fontSize: '24px', letterSpacing: '-0.5px' }}>Uninstall Agent</h2>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>Completely remove the agent from a target server.</div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', flexWrap: 'wrap' }}>
+                  Run Uninstallation Command
+                </div>
+                <div style={{ 
+                  background: '#0f172a', 
+                  borderRadius: 'var(--radius)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: 'inset 0 4px 15px rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px 20px', overflowX: 'auto' }}>
+                    <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#ef4444', fontSize: '13px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      {`curl -sL "${apiUrl}/api/nodes/uninstall/script" | sudo bash`}
+                    </code>
+                  </div>
+                  <div style={{ 
+                    borderTop: '1px solid rgba(255,255,255,0.05)', 
+                    background: 'rgba(0,0,0,0.2)', 
+                    padding: '10px 16px',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                  }}>
+                    <button 
+                      onClick={() => handleCopyText(`curl -sL "${apiUrl}/api/nodes/uninstall/script" | sudo bash`)}
+                      className="btn btn-primary btn-sm" 
+                      style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '100px', justifyContent: 'center', background: 'var(--error)', borderColor: 'var(--error)', color: '#fff' }}
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />} 
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div style={{ 
+                background: 'rgba(239, 68, 68, 0.05)', 
+                padding: '20px', 
+                borderRadius: 'var(--radius-lg)', 
+                border: '1px solid rgba(239, 68, 68, 0.2)', 
+                display: 'flex', 
+                gap: '16px',
+                alignItems: 'flex-start'
+              }}>
+                <ShieldAlert size={24} color="var(--error)" style={{ flexShrink: 0 }} />
+                <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', lineHeight: '1.6' }}>
+                  <strong style={{ display: 'block', marginBottom: '6px', fontSize: '15px' }}>Clean Removal Guarantee</strong>
+                  <p style={{ marginBottom: '12px', color: 'var(--text-secondary)' }}>
+                    This script safely stops all agent processes, cleans up Docker containers or Systemd services, removes installed files from <code>/opt/auditvisual-agent</code>, and clears custom Auditd rules.
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    Your underlying system and auditd daemon will remain perfectly intact.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px' }}>
+              <button className="btn btn-ghost" onClick={() => setShowUninstallModal(false)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

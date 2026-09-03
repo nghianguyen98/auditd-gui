@@ -577,4 +577,49 @@ echo "================================================="
     else:
         raise HTTPException(status_code=400, detail="Invalid mode. Must be 'docker' or 'native'")
 
+@router.get("/uninstall/script", response_class=PlainTextResponse)
+def get_uninstall_script():
+    """Get the one-liner bash script for uninstalling the agent cleanly."""
+    script = """#!/bin/bash
+set -e
 
+echo "================================================="
+echo " Auditd GUI Agent Uninstaller"
+echo "================================================="
+
+echo "[1/3] Stopping and removing services..."
+# Docker mode
+if [ -f "/opt/auditvisual-agent/docker-compose.yml" ]; then
+    cd /opt/auditvisual-agent
+    if command -v docker-compose >/dev/null 2>&1; then
+        sudo docker-compose down || true
+    elif command -v docker >/dev/null 2>&1; then
+        sudo docker compose down || true
+    fi
+fi
+
+# Native mode
+if [ -f "/etc/systemd/system/auditvisual-collector.service" ]; then
+    sudo systemctl stop auditvisual-collector.service || true
+    sudo systemctl disable auditvisual-collector.service || true
+    sudo rm -f /etc/systemd/system/auditvisual-collector.service
+    sudo systemctl daemon-reload
+fi
+
+echo "[2/3] Removing agent files..."
+sudo rm -rf /opt/auditvisual-agent
+
+echo "[3/3] Cleaning up audit rules..."
+sudo rm -f /etc/audit/rules.d/auditvisual.rules
+if command -v augenrules >/dev/null 2>&1; then
+    sudo augenrules --load || sudo systemctl restart auditd || true
+else
+    sudo systemctl restart auditd || true
+fi
+
+echo "================================================="
+echo " Agent uninstalled successfully."
+echo " The server is completely clean and untracked."
+echo "================================================="
+"""
+    return script

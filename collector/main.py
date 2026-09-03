@@ -225,6 +225,10 @@ class CollectorService:
             ticks = 0
             while not flush_thread_stop.is_set():
                 time.sleep(5)
+                # Fallback polling in case watchdog/inotify misses filesystem events
+                audit_watcher.read_new()
+                auth_watcher.read_new()
+                
                 self._flush_audit_buffer()
                 self.api.flush()
                 

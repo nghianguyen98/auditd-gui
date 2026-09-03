@@ -19,7 +19,7 @@ function CommandLine({ cmd }) {
   return (
     <div className={`cmd-line ${isDanger ? 'cmd-danger' : ''}`}>
       <span className={`cmd-prompt ${isRoot ? 'root' : 'user'}`}>
-        {isRoot ? 'root#' : `${cmd.username}$`}
+        {isRoot ? `${cmd.username} ➔ root#` : `${cmd.username}$`}
       </span>
       <div style={{ flex: 1 }}>
         <span className="cmd-text" style={{ color: isDanger ? '#fca5a5' : undefined }}>

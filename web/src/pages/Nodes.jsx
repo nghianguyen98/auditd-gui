@@ -127,7 +127,7 @@ export default function Nodes() {
         </button>
         {isAdmin && (
           <>
-            <button className="btn btn-outline btn-sm" onClick={() => { setApiUrl(window.location.origin); setShowUninstallModal(true); }} style={{ borderColor: 'var(--error)', color: 'var(--error)' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setApiUrl(window.location.origin); setShowUninstallModal(true); }} style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--error)' }}>
               <Trash2 size={14} /> Uninstall Agent
             </button>
             <button className="btn btn-primary btn-sm" onClick={handleOpenInstall}>

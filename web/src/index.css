@@ -995,5 +995,7 @@ select.input option {
   width: 90%;
   max-width: 500px;
   padding: 32px;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }

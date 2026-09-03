@@ -179,6 +179,16 @@ if [ -d /etc/audit/rules.d ]; then
     cat << 'EOF_RULES' | sudo tee /etc/audit/rules.d/auditvisual.rules > /dev/null
 -a always,exit -F arch=b64 -S execve -k auditvisual_cmd
 -a always,exit -F arch=b32 -S execve -k auditvisual_cmd
+
+# File monitoring rules
+-w /etc/passwd -p wa -k passwd_change
+-w /etc/shadow -p rwa -k shadow_access
+-w /etc/sudoers -p wa -k sudoers_change
+-w /root -p wa -k root_access
+-w /root/.ssh -p wa -k root_ssh
+-w /var/log -p wa -k log_access
+-w /var/spool/cron -p wa -k cron_change
+-w /etc/ssh/sshd_config -p wa -k sshd_config
 EOF_RULES
     if command -v augenrules >/dev/null 2>&1; then
         sudo augenrules --load || sudo systemctl restart auditd
@@ -306,6 +316,16 @@ if [ -d /etc/audit/rules.d ]; then
     cat << 'EOF_RULES' | sudo tee /etc/audit/rules.d/auditvisual.rules > /dev/null
 -a always,exit -F arch=b64 -S execve -k auditvisual_cmd
 -a always,exit -F arch=b32 -S execve -k auditvisual_cmd
+
+# File monitoring rules
+-w /etc/passwd -p wa -k passwd_change
+-w /etc/shadow -p rwa -k shadow_access
+-w /etc/sudoers -p wa -k sudoers_change
+-w /root -p wa -k root_access
+-w /root/.ssh -p wa -k root_ssh
+-w /var/log -p wa -k log_access
+-w /var/spool/cron -p wa -k cron_change
+-w /etc/ssh/sshd_config -p wa -k sshd_config
 EOF_RULES
     if command -v augenrules >/dev/null 2>&1; then
         sudo augenrules --load || sudo systemctl restart auditd

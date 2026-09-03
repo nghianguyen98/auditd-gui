@@ -158,9 +158,9 @@ class Ingestor:
             for path in paths:
                 conn.execute(
                     """INSERT INTO file_events
-                       (node_id, session_id, timestamp, username, auid, path, action, key)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (node_id, session_id, ts, username, auid, path,
+                       (node_id, session_id, timestamp, username, auid, effective_uid, path, action, key)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (node_id, session_id, ts, username, auid, event.get("effective_uid"), path,
                      event.get("action", "access"), event.get("key", ""))
                 )
             conn.commit()

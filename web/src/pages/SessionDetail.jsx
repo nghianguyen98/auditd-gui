@@ -129,6 +129,7 @@ export default function SessionDetail() {
             <thead>
               <tr>
                 <th>Time</th>
+                <th>User</th>
                 <th>Action</th>
                 <th>Path</th>
                 <th>Tag</th>
@@ -136,10 +137,13 @@ export default function SessionDetail() {
             </thead>
             <tbody>
               {files.length === 0
-                ? <tr><td colSpan={4}><div className="empty-state"><div className="empty-state-text">No file events</div></div></td></tr>
+                ? <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-text">No file events</div></div></td></tr>
                 : files.map(f => (
                   <tr key={f.id}>
                     <td style={{ fontFamily: 'JetBrains Mono', fontSize: 12 }}>{fmtTime(f.timestamp)}</td>
+                    <td style={{ fontWeight: 500, color: '#e2e8f0' }}>
+                      {f.effective_uid === 0 ? `${f.username} ➔ root` : f.username}
+                    </td>
                     <td><span className="badge badge-medium">{f.action}</span></td>
                     <td style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#7dd3fc' }}>{f.path}</td>
                     <td><span className="badge badge-neutral">{f.key}</span></td>

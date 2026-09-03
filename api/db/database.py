@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS file_events (
     timestamp   REAL NOT NULL,
     username    TEXT NOT NULL,
     auid        INTEGER NOT NULL,
+    effective_uid INTEGER,
     path        TEXT NOT NULL,
     action      TEXT NOT NULL,
     key         TEXT,

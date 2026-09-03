@@ -19,6 +19,11 @@ def list_nodes(user=Depends(get_current_user)):
             # Determine if node is online (seen in last 2 minutes)
             is_online = (now - node['last_seen']) < 120
             node['status'] = 'online' if is_online else 'offline'
+            
+            # Hide pending offline nodes (they haven't connected yet)
+            if node['hostname'].startswith('pending-') and not is_online:
+                continue
+                
             nodes.append(node)
             
         return nodes
@@ -94,6 +99,11 @@ def generate_node_token(user=Depends(get_current_user)):
     conn = get_connection()
     try:
         now = time.time()
+        
+        # Cleanup: delete any pending nodes older than 1 hour to prevent DB bloat
+        one_hour_ago = now - 3600
+        conn.execute("DELETE FROM nodes WHERE hostname LIKE 'pending-%' AND last_seen < ?", (one_hour_ago,))
+        
         conn.execute(
             "INSERT INTO nodes (hostname, token, status, last_seen) VALUES (?, ?, 'offline', ?)",
             (temp_hostname, token, now)

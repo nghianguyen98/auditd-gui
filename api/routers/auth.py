@@ -116,7 +116,11 @@ def ensure_admin_user():
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 @router.post("/login", response_model=Token)
 def login(request: Request, form: OAuth2PasswordRequestForm = Depends()):
-    ip = request.client.host if request.client else "unknown"
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+    else:
+        ip = request.headers.get("X-Real-IP", request.client.host if request.client else "unknown")
     now = time.time()
     
     # Check rate limit

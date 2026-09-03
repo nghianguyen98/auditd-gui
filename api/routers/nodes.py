@@ -148,6 +148,10 @@ def get_install_script(mode: str = "docker", api_url: str = "http://localhost:74
     
     node_api_key = token
     
+    import re
+    if re.search(r'[\r\n\'"$\\]', api_url) or re.search(r'[\r\n\'"$\\]', node_api_key):
+        raise HTTPException(status_code=400, detail="Invalid characters in parameters")
+    
     if mode == "docker":
         script = f"""#!/bin/bash
 set -e

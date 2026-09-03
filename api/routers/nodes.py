@@ -171,7 +171,21 @@ else
     exit 1
 fi
 
-sudo systemctl enable --now auditd || true
+sudo systemctl enable auditd || true
+sudo systemctl start auditd || true
+
+echo "Configuring auditd rules for command tracking..."
+if [ -d /etc/audit/rules.d ]; then
+    cat << 'EOF_RULES' | sudo tee /etc/audit/rules.d/auditvisual.rules > /dev/null
+-a always,exit -F arch=b64 -S execve -k auditvisual_cmd
+-a always,exit -F arch=b32 -S execve -k auditvisual_cmd
+EOF_RULES
+    if command -v augenrules >/dev/null 2>&1; then
+        sudo augenrules --load || sudo systemctl restart auditd
+    else
+        sudo systemctl restart auditd
+    fi
+fi
 
 echo "[2/4] Setting up directory..."
 mkdir -p /opt/auditvisual-agent
@@ -284,7 +298,21 @@ else
     echo "All dependencies are already met (auditd, python3, venv). Skipping installation."
 fi
 
-sudo systemctl enable --now auditd || true
+sudo systemctl enable auditd || true
+sudo systemctl start auditd || true
+
+echo "Configuring auditd rules for command tracking..."
+if [ -d /etc/audit/rules.d ]; then
+    cat << 'EOF_RULES' | sudo tee /etc/audit/rules.d/auditvisual.rules > /dev/null
+-a always,exit -F arch=b64 -S execve -k auditvisual_cmd
+-a always,exit -F arch=b32 -S execve -k auditvisual_cmd
+EOF_RULES
+    if command -v augenrules >/dev/null 2>&1; then
+        sudo augenrules --load || sudo systemctl restart auditd
+    else
+        sudo systemctl restart auditd
+    fi
+fi
 
 echo "[2/6] Setting up Agent Directory..."
 AGENT_DIR="/opt/auditvisual-agent/collector"
@@ -438,7 +466,21 @@ else
     echo "All dependencies are already met (auditd, python3, venv, unzip). Skipping installation."
 fi
 
-sudo systemctl enable --now auditd || true
+sudo systemctl enable auditd || true
+sudo systemctl start auditd || true
+
+echo "Configuring auditd rules for command tracking..."
+if [ -d /etc/audit/rules.d ]; then
+    cat << 'EOF_RULES' | sudo tee /etc/audit/rules.d/auditvisual.rules > /dev/null
+-a always,exit -F arch=b64 -S execve -k auditvisual_cmd
+-a always,exit -F arch=b32 -S execve -k auditvisual_cmd
+EOF_RULES
+    if command -v augenrules >/dev/null 2>&1; then
+        sudo augenrules --load || sudo systemctl restart auditd
+    else
+        sudo systemctl restart auditd
+    fi
+fi
 
 echo "[2/6] Setting up Agent Directory..."
 AGENT_DIR="/opt/auditvisual-agent/collector"

@@ -60,7 +60,41 @@ export default function Nodes() {
 
   function handleCopy() {
     const text = `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`
-    navigator.clipboard.writeText(text)
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => showCopied())
+        .catch(err => fallbackCopyTextToClipboard(text))
+    } else {
+      fallbackCopyTextToClipboard(text)
+    }
+  }
+
+  function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea")
+    textArea.value = text
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0"
+    textArea.style.left = "0"
+    textArea.style.position = "fixed"
+
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+
+    try {
+      document.execCommand('copy')
+      showCopied()
+    } catch (err) {
+      console.error('Fallback: Oops, unable to copy', err)
+      alert('Failed to copy. Please copy the command manually.')
+    }
+
+    document.body.removeChild(textArea)
+  }
+
+  function showCopied() {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -273,31 +307,40 @@ export default function Nodes() {
 
               {/* Step 3 */}
               <div>
-                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px' }}>
+                <div style={{ fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', flexWrap: 'wrap' }}>
                   <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '11px' }}>Step 3</span> 
                   Run Command on Target Server
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <div style={{ 
-                    background: '#0f172a', /* Always dark for code */
-                    padding: '16px 20px', 
-                    borderRadius: 'var(--radius)', 
-                    overflowX: 'auto',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: 'inset 0 4px 15px rgba(0,0,0,0.5)'
-                  }}>
-                    <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                <div style={{ 
+                  background: '#0f172a', 
+                  borderRadius: 'var(--radius)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: 'inset 0 4px 15px rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px 20px', overflowX: 'auto' }}>
+                    <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8', fontSize: '13px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                       {generatingToken ? "Generating secure token..." : `curl -sL "${apiUrl}/api/nodes/install/script?mode=${installTab}&api_url=${encodeURIComponent(apiUrl)}&token=${installToken || ''}" | sudo bash`}
                     </code>
                   </div>
-                  <button 
-                    onClick={handleCopy}
-                    className="btn btn-primary" 
-                    style={{ position: 'absolute', top: '10px', right: '10px', padding: '6px 12px', fontSize: '13px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />} 
-                    {copied ? 'Copied' : 'Copy'}
-                  </button>
+                  <div style={{ 
+                    borderTop: '1px solid rgba(255,255,255,0.05)', 
+                    background: 'rgba(0,0,0,0.2)', 
+                    padding: '10px 16px',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                  }}>
+                    <button 
+                      onClick={handleCopy}
+                      className="btn btn-primary btn-sm" 
+                      style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '100px', justifyContent: 'center' }}
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />} 
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -236,6 +236,11 @@ services:
       - /var/log/audit/audit.log:/var/log/audit/audit.log:ro
       - /var/log/auth.log:/var/log/auth.log:ro
       - /etc/passwd:/host-etc/passwd:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 EOF
 
 echo "[4/4] Starting Agent..."

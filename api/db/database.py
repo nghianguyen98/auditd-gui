@@ -171,6 +171,11 @@ def init_db():
                 )
                 logger.info("Created default Central Server node in database.")
 
+        # Auto-close ghost sessions older than 24h
+        import time
+        cutoff_24h = time.time() - 86400
+        conn.execute("UPDATE sessions SET logout_time = ? WHERE logout_time IS NULL AND login_time < ?", (cutoff_24h, cutoff_24h))
+        
         conn.commit()
 
         logger.info(f"Database initialized at {DB_PATH}")
@@ -204,8 +209,14 @@ def _retention_loop():
                     c3 = conn.execute("DELETE FROM commands WHERE timestamp < ?", (cutoff,))
                     c4 = conn.execute("DELETE FROM file_events WHERE timestamp < ?", (cutoff,))
                     
+                    # Auto-close ghost sessions older than 24h
+                    cutoff_24h = time.time() - 86400
+                    c_ghost = conn.execute("UPDATE sessions SET logout_time = ? WHERE logout_time IS NULL AND login_time < ?", (cutoff_24h, cutoff_24h))
+                    
                     conn.commit()
                     
+                    if c_ghost.rowcount > 0:
+                        logger.info(f"Auto-closed {c_ghost.rowcount} ghost sessions older than 24h")
                     total_deleted = c1.rowcount + c2.rowcount + c3.rowcount + c4.rowcount
                     if total_deleted > 0:
                         logger.info(f"Data retention job pruned {total_deleted} old records (cutoff: {days} days)")
